@@ -1,5 +1,7 @@
 # Narnia — Ledger of Successes & Failures
 
+> **APPEND ONLY.** Never edit, delete, or reword existing entries. New entries are added to the bottom of their section with the next sequential number (F8, S9, etc.). This is a permanent, immutable record.
+
 > This file tracks what worked and what didn't during development.
 > Always read this before starting new work so you follow winning patterns and avoid past mistakes.
 
