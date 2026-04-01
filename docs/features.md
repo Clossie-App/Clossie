@@ -51,6 +51,17 @@
 - **Neglected items** — Items not worn in 3+ months
 - **Total closet value** — Sum of all item prices
 
+## AI Outfit Suggestions
+- **Generate ideas** — Tap "AI Suggest" and get 3 complete outfit combinations built from your actual closet items
+- **Powered by Gemini/GPT** — Only sends item metadata (category, color, season) — no images, so it's fast and cheap
+- **Filters** — Narrow by occasion and season before generating
+- **Prioritize unworn** — Toggle to have the AI favor items you haven't worn much
+- **Laundry excluded** — Items currently in the wash are automatically left out
+- **Hallucination guard** — AI-returned item IDs are validated against your real closet; invalid suggestions are filtered out
+- **One-tap save** — Save any suggestion as a real outfit with a single tap
+- **"Style This" entry point** — From any item detail page, get outfits built around that specific piece
+- **Loading UX** — Rotating status messages and skeleton cards while AI thinks
+
 ## Wishlist
 - **Separate view** — Toggle between owned items and wishlist
 - **Same features** — Wishlist items support all the same tagging and filtering
