@@ -61,6 +61,12 @@ export interface WearLog {
   worn_date: string;
 }
 
+export interface OutfitSuggestion {
+  name: string;
+  item_ids: string[];
+  reason: string;
+}
+
 export interface PackingList {
   id: string;
   user_id: string;

@@ -126,6 +126,12 @@ export default function ItemDetailPage() {
         >
           Build Outfit
         </button>
+        <button
+          onClick={() => router.push(`/outfits/suggest?item=${item.id}`)}
+          className="flex-1 py-2.5 bg-clossie-50 text-clossie-700 rounded-xl text-sm font-medium"
+        >
+          Style This
+        </button>
       </div>
 
       {/* Details */}

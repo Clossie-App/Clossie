@@ -48,17 +48,43 @@ export default function OutfitsPage() {
             <p className="text-gray-400 text-center text-sm mb-4">
               Combine your closet items into outfits
             </p>
-            <Link
-              href="/outfits/builder"
-              className="px-6 py-3 bg-clossie-600 text-white rounded-xl font-semibold"
-            >
-              Create First Outfit
-            </Link>
+            <div className="flex gap-3">
+              <Link
+                href="/outfits/builder"
+                className="px-5 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold text-sm"
+              >
+                Build Manually
+              </Link>
+              <Link
+                href="/outfits/suggest"
+                className="px-5 py-3 bg-clossie-600 text-white rounded-xl font-semibold text-sm"
+              >
+                AI Suggest
+              </Link>
+            </div>
           </div>
         ) : (
-          outfits.map((outfit) => (
+          <>
+          {/* AI Suggest entry card */}
+          <Link
+            href="/outfits/suggest"
+            className="block bg-clossie-50 rounded-2xl p-4 border border-clossie-100 active:scale-[0.98] transition"
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">&#x2728;</span>
+              <div>
+                <p className="font-semibold text-clossie-700 text-sm">Get AI Outfit Ideas</p>
+                <p className="text-xs text-clossie-500">Let AI style your closet items into outfits</p>
+              </div>
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 text-clossie-400 ml-auto">
+                <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+              </svg>
+            </div>
+          </Link>
+          {outfits.map((outfit) => (
             <OutfitCard key={outfit.id} outfit={outfit} onLogWear={async () => { await logWear(outfit.id); showToast(`Logged "${outfit.name}" — nice fit! 🔥`, 'success'); }} />
-          ))
+          ))}
+          </>
         )}
       </div>
     </div>
