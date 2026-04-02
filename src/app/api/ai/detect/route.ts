@@ -46,7 +46,9 @@ export async function POST(request: NextRequest) {
 
     const data = await response.json();
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '[]';
-    const jsonStr = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    // Extract JSON array — handles both bare JSON and markdown code blocks without corrupting content
+    const jsonMatch = text.match(/\[[\s\S]*\]/);
+    const jsonStr = jsonMatch ? jsonMatch[0] : '[]';
 
     let items = JSON.parse(jsonStr);
     if (!Array.isArray(items)) items = [];

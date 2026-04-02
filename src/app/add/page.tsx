@@ -83,12 +83,11 @@ function AddItemContent() {
     if (!authLoading && !user) router.replace('/login');
   }, [user, authLoading, router]);
 
-  // Clean up object URLs on unmount to prevent memory leaks
-  const reviewCardsRef = useRef(reviewCards);
-  reviewCardsRef.current = reviewCards;
+  // Clean up object URLs on unmount — use a Set so URLs created at any point are always captured
+  const objectUrlsRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     return () => {
-      reviewCardsRef.current.forEach(card => URL.revokeObjectURL(card.imageUrl));
+      objectUrlsRef.current.forEach(url => URL.revokeObjectURL(url));
     };
   }, []);
 
@@ -119,6 +118,7 @@ function AddItemContent() {
     try {
       // Load image element — needed for canvas drawing and cropping
       const objectUrl = URL.createObjectURL(file);
+      objectUrlsRef.current.add(objectUrl);
       const img = new Image();
       await new Promise<void>((resolve, reject) => {
         img.onload = () => resolve();
@@ -198,7 +198,7 @@ function AddItemContent() {
         cards.push({
           id: item.id,
           imageBlob: cleanBlob,
-          imageUrl: URL.createObjectURL(cleanBlob),
+          imageUrl: (() => { const u = URL.createObjectURL(cleanBlob); objectUrlsRef.current.add(u); return u; })(),
           tags,
           brand: '',
           size: '',
@@ -919,9 +919,13 @@ async function cropItem(imageEl: HTMLImageElement, box: [number, number, number,
   c.width = Math.round(nw);
   c.height = Math.round(nh);
   c.getContext('2d')!.drawImage(imageEl, nx, ny, nw, nh, 0, 0, nw, nh);
-  return new Promise((resolve, reject) =>
-    c.toBlob(b => b ? resolve(b) : reject(new Error('Crop failed')), 'image/png')
-  );
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Crop timed out')), 10000);
+    c.toBlob(b => {
+      clearTimeout(timer);
+      b ? resolve(b) : reject(new Error('Crop failed'));
+    }, 'image/png');
+  });
 }
 
 function fileToBase64(file: File): Promise<string> {
