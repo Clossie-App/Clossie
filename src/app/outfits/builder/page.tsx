@@ -15,6 +15,7 @@ import {
   SEASON_LABELS,
   OCCASION_LABELS,
 } from '@/lib/types';
+import { haptics } from '@/lib/haptics';
 
 const BUILD_CATEGORIES: ClothingCategory[] = [
   'tops', 'bottoms', 'dresses', 'outerwear', 'shoes', 'bags', 'accessories', 'jewelry',
@@ -59,6 +60,7 @@ function OutfitBuilderContent() {
   }, [user, authLoading, router]);
 
   const toggleItem = (item: ClothingItem) => {
+    haptics.light();
     const next = new Map(selectedItems);
     if (next.has(item.id)) {
       next.delete(item.id);

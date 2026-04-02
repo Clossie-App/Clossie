@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useCallback, useRef } from 'react';
+import { haptics } from './haptics';
 
 type ToastType = 'success' | 'error' | 'info';
 
@@ -21,6 +22,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const counterRef = useRef(0);
 
   const showToast = useCallback((message: string, type: ToastType = 'info') => {
+    if (type === 'success') haptics.success();
+    else if (type === 'error') haptics.error();
+    else haptics.light();
     const id = ++counterRef.current;
     setToasts((prev) => [...prev, { id, message, type }]);
     setTimeout(() => {

@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { createClient } from '@/lib/supabase';
 import { useToast } from '@/lib/toast-context';
+import { haptics } from '@/lib/haptics';
 import {
   ClothingCategory,
   Season,
@@ -229,13 +230,13 @@ function AddItemContent() {
           {/* Owned vs Wishlist toggle */}
           <div className="flex bg-gray-100 rounded-xl p-1 mb-6 w-full max-w-xs">
             <button
-              onClick={() => setIsWishlist(false)}
+              onClick={() => { haptics.light(); setIsWishlist(false); }}
               className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${!isWishlist ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500'}`}
             >
               I Own This
             </button>
             <button
-              onClick={() => setIsWishlist(true)}
+              onClick={() => { haptics.light(); setIsWishlist(true); }}
               className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${isWishlist ? 'bg-white text-clossie-600 shadow-sm' : 'text-gray-500'}`}
             >
               Wishlist
@@ -380,13 +381,13 @@ function AddItemContent() {
               {/* Owned vs Wishlist */}
               <div className="flex bg-gray-100 rounded-xl p-1">
                 <button
-                  onClick={() => setIsWishlist(false)}
+                  onClick={() => { haptics.light(); setIsWishlist(false); }}
                   className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${!isWishlist ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500'}`}
                 >
                   I Own This
                 </button>
                 <button
-                  onClick={() => setIsWishlist(true)}
+                  onClick={() => { haptics.light(); setIsWishlist(true); }}
                   className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${isWishlist ? 'bg-white text-clossie-600 shadow-sm' : 'text-gray-500'}`}
                 >
                   Wishlist
