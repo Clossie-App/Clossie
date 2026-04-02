@@ -63,6 +63,18 @@
 - **"Style This" entry point** — From any item detail page, get outfits built around that specific piece
 - **Loading UX** — Rotating status messages and skeleton cards while AI thinks
 
+## Daily Outfit Suggestion
+- **Auto-generate on load** — Opens with a personalized greeting and instantly generates one AI outfit for today
+- **Season-aware** — Automatically detects the current season from the calendar and filters items accordingly
+- **Personalized greeting** — Shows "Good morning/afternoon/evening" with the user's first name
+- **Vertical item cards** — Each outfit item displayed as a card with image, category, color, brand, and "New" badge for unworn items
+- **Wear This Today** — One-tap to save the outfit AND log it as worn today (increments wear count on all items)
+- **Save for later** — Save the outfit without logging a wear
+- **Shuffle** — Regenerate to get a different outfit suggestion
+- **Reuses AI engine** — Same `/api/ai/suggest-outfits` endpoint as the AI Outfit Ideas page
+- **Bottom nav integration** — Accessible via the "Today" tab (sun icon) in the bottom navigation bar
+- **Prioritizes unworn** — AI favors items with low wear counts to keep your wardrobe rotation fresh
+
 ## Onboarding
 - **4-step welcome flow** — New users see a swipeable carousel introducing Clossie's key features before entering the app
 - **Step 1: Welcome** — Personalized greeting using your first name
