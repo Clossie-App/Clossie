@@ -58,9 +58,9 @@ export default function ItemDetailPage() {
 
   const handleDelete = async () => {
     if (!item) return;
-    haptics.error();
     const { error } = await supabase.from('clothing_items').delete().eq('id', item.id);
     if (error) { showToast('Could not delete item. Try again.', 'error'); return; }
+    haptics.error();
     showToast('Item deleted', 'info');
     router.push('/closet');
   };

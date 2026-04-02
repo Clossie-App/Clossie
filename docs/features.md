@@ -80,6 +80,13 @@
 - **Same features** — Wishlist items support all the same tagging and filtering
 - **Add via share** — Share product images from shopping apps directly to Clossie
 
+## Haptic Feedback
+- **Light vibration (15ms)** — Fires on toggles and selections (owned/wishlist switch, outfit builder item picks)
+- **Success vibration (20ms)** — Fires on saves and confirmations (save item, log wear, favorite, laundry toggle)
+- **Error vibration (50ms)** — Fires on destructive actions (item delete)
+- **Automatic via toasts** — Most haptics are triggered centrally through the toast system, so any action that shows a toast also vibrates
+- **Silent fallback** — On devices that don't support the Vibration API (like Safari on iOS), haptics are silently skipped with no errors
+
 ## PWA Features
 - **Installable** — Add to home screen on iOS/Android
 - **Share target** — Native share sheet integration for receiving images
