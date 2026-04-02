@@ -87,13 +87,15 @@ export default function ClosetPage() {
 
   const handleToggleLaundry = useCallback(async (item: ClothingItem) => {
     const next = !item.in_laundry;
-    await updateItem(item.id, { in_laundry: next });
-    showToast(next ? 'Moved to laundry' : 'Marked as clean', 'success');
+    const result = await updateItem(item.id, { in_laundry: next });
+    if (result) showToast(next ? 'Moved to laundry' : 'Marked as clean', 'success');
+    else showToast('Could not update item', 'error');
   }, [updateItem, showToast]);
 
   const handleToggleFavorite = useCallback(async (item: ClothingItem) => {
-    await updateItem(item.id, { is_favorite: !item.is_favorite });
-  }, [updateItem]);
+    const result = await updateItem(item.id, { is_favorite: !item.is_favorite });
+    if (!result) showToast('Could not update item', 'error');
+  }, [updateItem, showToast]);
 
   if (authLoading) return null;
 
