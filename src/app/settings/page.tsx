@@ -168,6 +168,9 @@ export default function SettingsPage() {
             <Link href="/stats" className="flex items-center justify-between px-4 py-3.5"><div className="flex items-center gap-3"><span className="text-lg">&#x1F4CA;</span><span className="text-sm font-medium text-gray-700 dark:text-gray-200">Closet Insights</span></div><Chevron /></Link>
             <Link href="/calendar" className="flex items-center justify-between px-4 py-3.5"><div className="flex items-center gap-3"><span className="text-lg">&#x1F4C5;</span><span className="text-sm font-medium text-gray-700 dark:text-gray-200">Wear Calendar</span></div><Chevron /></Link>
             <Link href="/outfits" className="flex items-center justify-between px-4 py-3.5"><div className="flex items-center gap-3"><span className="text-lg">&#x1F457;</span><span className="text-sm font-medium text-gray-700 dark:text-gray-200">Outfit History</span></div><Chevron /></Link>
+            <Link href="/challenges" className="flex items-center justify-between px-4 py-3.5"><div className="flex items-center gap-3"><span className="text-lg">&#x1F3AF;</span><span className="text-sm font-medium text-gray-700 dark:text-gray-200">Closet Challenges</span></div><Chevron /></Link>
+            <Link href="/shop-check" className="flex items-center justify-between px-4 py-3.5"><div className="flex items-center gap-3"><span className="text-lg">&#x1F6CD;&#xFE0F;</span><span className="text-sm font-medium text-gray-700 dark:text-gray-200">Shop Your Closet First</span></div><Chevron /></Link>
+            <Link href="/duels" className="flex items-center justify-between px-4 py-3.5"><div className="flex items-center gap-3"><span className="text-lg">&#x2694;&#xFE0F;</span><span className="text-sm font-medium text-gray-700 dark:text-gray-200">Outfit Duels</span></div><Chevron /></Link>
           </div>
         </div>
         {/* Preferences */}

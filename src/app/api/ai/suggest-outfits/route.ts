@@ -23,7 +23,15 @@ function sanitize(s: string | null | undefined): string {
 
 function buildPrompt(
   items: CompactItem[],
-  filters: { occasion?: string; season?: string; mustIncludeItemId?: string; preferUnworn?: boolean }
+  filters: {
+    occasion?: string;
+    season?: string;
+    mustIncludeItemId?: string;
+    preferUnworn?: boolean;
+    mood?: string;
+    count?: number;
+    contrasting?: boolean;
+  }
 ): string {
   // Use JSON.stringify for safe serialization instead of string interpolation
   const safeItems = items.map((i) => ({
@@ -38,7 +46,9 @@ function buildPrompt(
     is_favorite: Boolean(i.is_favorite),
   }));
 
-  let rules = `You are a fashion stylist AI. Given a user's wardrobe items, suggest 3 complete outfit combinations.
+  const outfitCount = filters.count && filters.count >= 1 && filters.count <= 5 ? filters.count : 3;
+
+  let rules = `You are a fashion stylist AI. Given a user's wardrobe items, suggest ${outfitCount} complete outfit combination${outfitCount === 1 ? '' : 's'}.
 
 Rules:
 - Each outfit MUST use ONLY item IDs from the provided list — do NOT invent new IDs
@@ -61,8 +71,27 @@ Rules:
   if (filters.mustIncludeItemId) {
     rules += `\n- IMPORTANT: At least one outfit MUST include the item with id "${sanitize(filters.mustIncludeItemId)}". Build the other items around it to create a complete look.`;
   }
+  if (filters.mood) {
+    // Import mood hints dynamically to keep this file self-contained
+    const moodHints: Record<string, string> = {
+      powerful: 'Use bold, saturated colors (reds, blacks, deep jewel tones). Prefer structured silhouettes — blazers, tailored pants, clean lines. Include one statement piece. The outfit should communicate confidence and authority.',
+      cozy: 'Use warm, soft tones (cream, camel, blush, soft gray). Prefer oversized or relaxed fits — chunky knits, wide pants, layered textures. Prioritize comfort without looking sloppy.',
+      'main-character': 'Go bold with high contrast and unexpected combinations. Include at least one standout statement piece. Mix patterns or textures. The outfit should look curated and intentional, like the protagonist of a movie.',
+      'professional-badass': 'Neutral palette (black, white, navy, gray, camel) with clean, tailored lines. Include one unexpected detail — a bold shoe, a textured bag, or a pop of color in an accessory. The look should be office-appropriate but with edge.',
+      'casual-cool': 'Relaxed, tonal dressing. Stick to 2-3 colors in the same family. Prefer relaxed but intentional fits. Minimal accessories. The outfit should look like you put it together in 5 minutes but it looks amazing.',
+      'date-night': 'Use rich, romantic colors (deep reds, burgundy, emerald, black). Prefer flattering silhouettes that define the shape. Include intentional details — nice jewelry, a special bag, or a textured top. The look should feel special and confident.',
+      'weekend-warrior': 'Comfortable but put-together layers. Versatile pieces that work for errands, brunch, or a spontaneous adventure. Practical footwear. The outfit should be easy to move in while still looking good.',
+    };
+    const hint = moodHints[sanitize(filters.mood)] || '';
+    if (hint) {
+      rules += `\n\nMOOD CONTEXT: The user wants to feel "${sanitize(filters.mood)}" today. Style rules for this mood:\n${hint}\nPrioritize these styling rules when selecting items and building outfits.`;
+    }
+  }
+  if (filters.contrasting) {
+    rules += `\n- Make the outfits stylistically DIFFERENT from each other — one more formal/structured, one more relaxed/creative — so the user has a genuine choice between two distinct vibes.`;
+  }
 
-  rules += `\n\nReturn ONLY a JSON array with exactly 3 objects: [{ "name": "...", "item_ids": ["..."], "reason": "..." }]
+  rules += `\n\nReturn ONLY a JSON array with exactly ${outfitCount} object${outfitCount === 1 ? '' : 's'}: [{ "name": "...", "item_ids": ["..."], "reason": "..." }]
 - "name" is a short creative outfit name (2-4 words)
 - "item_ids" is an array of item IDs from the list
 - "reason" is one sentence explaining the style choice`;
@@ -85,7 +114,7 @@ export async function POST(request: NextRequest) {
   const openaiKey = process.env.OPENAI_API_KEY;
 
   try {
-    const { items, occasion, season, mustIncludeItemId, preferUnworn } = await request.json();
+    const { items, occasion, season, mustIncludeItemId, preferUnworn, mood, count, contrasting } = await request.json();
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ error: 'No items provided' }, { status: 400 });
@@ -94,7 +123,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Too many items (max 500)' }, { status: 400 });
     }
 
-    const prompt = buildPrompt(items, { occasion, season, mustIncludeItemId, preferUnworn });
+    const prompt = buildPrompt(items, { occasion, season, mustIncludeItemId, preferUnworn, mood, count, contrasting });
 
     let content: string | null = null;
 
