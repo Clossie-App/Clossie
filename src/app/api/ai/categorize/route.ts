@@ -6,13 +6,19 @@ const VALID_CATEGORIES = ['tops','bottoms','dresses','outerwear','shoes','bags',
 const VALID_SEASONS = ['spring','summer','fall','winter','all-season'];
 const VALID_OCCASIONS = ['casual','work','going-out','formal','athletic','lounge'];
 
-const PROMPT = `You are a clothing categorization AI. Analyze the clothing item in the image and return a JSON object with these fields:
+const PROMPT = `You are an expert fashion categorization AI. Analyze the clothing item in the image carefully.
+
+The image may be a cropped section from a larger photo, so the item may be partially visible or on a person's body. Focus on identifying WHAT the item IS, not the background or the person.
+
+Return a JSON object with these fields:
 - category: one of "tops", "bottoms", "dresses", "outerwear", "shoes", "bags", "accessories", "jewelry", "activewear", "other"
-- subcategory: specific type (e.g., "t-shirt", "jeans", "sneakers", "blazer", "earrings")
-- color: the primary CSS color name or hex code (e.g., "black", "#1a1a2e", "navy")
-- secondary_color: secondary color if the item is multi-colored, otherwise null
-- season: one of "spring", "summer", "fall", "winter", "all-season"
-- occasion: one of "casual", "work", "going-out", "formal", "athletic", "lounge"
+- subcategory: be SPECIFIC — e.g., "crop top", "high-waisted jeans", "platform sneakers", "crossbody bag", "stud earrings", "midi skirt", "bomber jacket"
+- color: the ACTUAL color of the clothing item as a CSS color name (e.g., "black", "navy", "coral", "olive", "cream"). Use hex only if the color is unusual.
+- secondary_color: secondary color if the item has a pattern, print, or is two-toned. Otherwise null.
+- season: one of "spring", "summer", "fall", "winter", "all-season" — based on fabric weight, coverage, and typical usage
+- occasion: one of "casual", "work", "going-out", "formal", "athletic", "lounge" — based on style, material, and formality
+
+IMPORTANT: Never return "other" as category unless the item truly cannot be classified. A tank top is "tops", cowboy boots are "shoes", a belt is "accessories", etc.
 
 Return ONLY the JSON object, no other text.`;
 
