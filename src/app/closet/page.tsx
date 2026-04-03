@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { useClothingItems } from '@/hooks/useClothingItems';
+import { useToast } from '@/lib/toast-context';
 import ClothingGrid from '@/components/closet/ClothingGrid';
-import { ClothingCategory, CATEGORY_LABELS, CATEGORY_ICONS, Season, Occasion, SEASON_LABELS, OCCASION_LABELS } from '@/lib/types';
+import { ClothingItem, ClothingCategory, CATEGORY_LABELS, CATEGORY_ICONS, Season, Occasion, SEASON_LABELS, OCCASION_LABELS } from '@/lib/types';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
@@ -15,7 +16,8 @@ const ALL_CATEGORIES: (ClothingCategory | 'all')[] = [
 export default function ClosetPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const { items, loading } = useClothingItems();
+  const { items, loading, deleteItem, updateItem } = useClothingItems();
+  const { showToast } = useToast();
   const [activeCategory, setActiveCategory] = useState<ClothingCategory | 'all'>('all');
   const [filterSeason, setFilterSeason] = useState<Season | 'all'>('all');
   const [filterOccasion, setFilterOccasion] = useState<Occasion | 'all'>('all');
@@ -75,6 +77,25 @@ export default function ClosetPage() {
 
     return result;
   }, [items, searchQuery, activeCategory, filterSeason, filterOccasion, sortBy, viewMode]);
+
+  const handleDelete = useCallback(async (id: string) => {
+    const ok = await deleteItem(id);
+    if (ok) showToast('Item deleted', 'success');
+    else showToast('Could not delete item', 'error');
+    return ok;
+  }, [deleteItem, showToast]);
+
+  const handleToggleLaundry = useCallback(async (item: ClothingItem) => {
+    const next = !item.in_laundry;
+    const result = await updateItem(item.id, { in_laundry: next });
+    if (result) showToast(next ? 'Moved to laundry' : 'Marked as clean', 'success');
+    else showToast('Could not update item', 'error');
+  }, [updateItem, showToast]);
+
+  const handleToggleFavorite = useCallback(async (item: ClothingItem) => {
+    const result = await updateItem(item.id, { is_favorite: !item.is_favorite });
+    if (!result) showToast('Could not update item', 'error');
+  }, [updateItem, showToast]);
 
   if (authLoading) return null;
 
@@ -279,7 +300,15 @@ export default function ClosetPage() {
             );
           }
 
-          return <ClothingGrid items={filteredItems} loading={loading} />;
+          return (
+            <ClothingGrid
+              items={filteredItems}
+              loading={loading}
+              onDelete={handleDelete}
+              onToggleLaundry={handleToggleLaundry}
+              onToggleFavorite={handleToggleFavorite}
+            />
+          );
         })()}
       </div>
     </div>
