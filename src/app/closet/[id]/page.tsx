@@ -21,6 +21,7 @@ export default function ItemDetailPage() {
 
   useEffect(() => {
     if (!user || !id) return;
+    let active = true;
 
     supabase
       .from('clothing_items')
@@ -29,10 +30,13 @@ export default function ItemDetailPage() {
       .eq('user_id', user.id)
       .single()
       .then(({ data }) => {
+        if (!active) return;
         if (data) setItem(data as ClothingItem);
         setLoading(false);
       })
-      .catch(() => setLoading(false));
+      .catch(() => { if (active) setLoading(false); });
+
+    return () => { active = false; };
   }, [user, id]);
 
   const toggleFavorite = async () => {
