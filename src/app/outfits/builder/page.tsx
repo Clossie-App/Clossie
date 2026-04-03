@@ -210,11 +210,16 @@ function OutfitBuilderContent() {
                 <button
                   key={item.id}
                   onClick={() => toggleItem(item)}
-                  className={`aspect-square rounded-xl overflow-hidden border-2 transition ${
-                    isSelected ? 'border-clossie-500 ring-2 ring-clossie-200' : 'border-gray-100'
+                  className={`relative aspect-square rounded-xl overflow-hidden border-2 transition ${
+                    isSelected ? 'border-clossie-500 ring-2 ring-clossie-200' : item.is_wishlist ? 'border-dashed border-clossie-300 opacity-70' : 'border-gray-100'
                   }`}
                 >
                   <img src={item.image_url} alt={item.category} className="w-full h-full object-contain bg-white" />
+                  {item.is_wishlist && (
+                    <div className="absolute top-0.5 left-0.5 bg-clossie-100 text-clossie-600 text-[8px] px-1 py-0.5 rounded font-medium leading-none">
+                      Want
+                    </div>
+                  )}
                 </button>
               );
             })}

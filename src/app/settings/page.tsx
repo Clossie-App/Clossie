@@ -38,7 +38,7 @@ function PillSelect({ options, value, onChange }: { options: string[]; value: st
 }
 
 export default function SettingsPage() {
-  const { user, loading: authLoading, signOut, updateProfile, updatePreferences, getPreferences } = useAuth();
+  const { user, loading: authLoading, signOut } = useAuth();
   const { showToast } = useToast();
   const router = useRouter();
   const [editingName, setEditingName] = useState(false);
@@ -54,40 +54,36 @@ export default function SettingsPage() {
   useEffect(() => {
     if (!authLoading && !user) { router.replace('/login'); return; }
     if (!user) return;
-    const p = getPreferences();
-    setDarkMode(p.dark_mode ?? false);
-    setCompactGrid(p.compact_grid ?? false);
-    setDefaultSeason(p.default_season ?? 'Auto');
-    setDefaultOccasion(p.default_occasion ?? 'Casual');
-    setSuggestionStyle(p.suggestion_style ?? 'Classic');
     setNameInput(user.user_metadata?.full_name || '');
     setDarkMode(localStorage.getItem('clossie-dark') === 'true');
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    setCompactGrid(localStorage.getItem('clossie-compact') === 'true');
+    setDefaultSeason(localStorage.getItem('clossie-season') || 'Auto');
+    setDefaultOccasion(localStorage.getItem('clossie-occasion') || 'Casual');
+    setSuggestionStyle(localStorage.getItem('clossie-style') || 'Classic');
   }, [user, authLoading, router]);
 
   const handleSignOut = async () => { await signOut(); router.replace('/login'); };
   const handleSaveName = async () => {
     if (!nameInput.trim()) return;
-    const { error } = await updateProfile({ full_name: nameInput.trim() });
-    if (error) { showToast(error, 'error'); return; }
+    const supabase = createClient();
+    const { error } = await supabase.auth.updateUser({ data: { full_name: nameInput.trim() } });
+    if (error) { showToast(error.message, 'error'); return; }
     showToast('Name updated', 'success');
     setEditingName(false);
   };
-  const toggleDarkMode = useCallback(async (on: boolean) => {
+  const toggleDarkMode = useCallback((on: boolean) => {
     setDarkMode(on);
     document.documentElement.classList.toggle('dark', on);
     localStorage.setItem('clossie-dark', String(on));
-    await updatePreferences({ dark_mode: on });
-  }, [updatePreferences]);
-  const toggleCompactGrid = useCallback(async (on: boolean) => {
+  }, []);
+  const toggleCompactGrid = useCallback((on: boolean) => {
     setCompactGrid(on);
     localStorage.setItem('clossie-compact', String(on));
-    await updatePreferences({ compact_grid: on });
-  }, [updatePreferences]);
-  const savePref = useCallback(async (key: string, value: string, setter: (v: string) => void) => {
+  }, []);
+  const savePref = useCallback((key: string, value: string, setter: (v: string) => void) => {
     setter(value);
-    await updatePreferences({ [key]: value });
-  }, [updatePreferences]);
+    localStorage.setItem(`clossie-${key}`, value);
+  }, []);
   const handleExportData = async () => {
     if (!user) return;
     setExporting(true);
@@ -107,7 +103,26 @@ export default function SettingsPage() {
     finally { setExporting(false); }
   };
   const handleDeleteAccount = async () => {
-    showToast('Please email support@clossie.app to delete your account', 'info');
+    if (!user) return;
+    try {
+      const supabase = createClient();
+      await supabase.from('wear_log').delete().eq('user_id', user.id);
+      const { data: userOutfits } = await supabase.from('outfits').select('id').eq('user_id', user.id);
+      if (userOutfits && userOutfits.length > 0) {
+        await supabase.from('outfit_items').delete().in('outfit_id', userOutfits.map(o => o.id));
+      }
+      await supabase.from('outfits').delete().eq('user_id', user.id);
+      const { data: imageFiles } = await supabase.storage.from('clothing-images').list(user.id);
+      if (imageFiles && imageFiles.length > 0) {
+        await supabase.storage.from('clothing-images').remove(imageFiles.map(f => `${user.id}/${f.name}`));
+      }
+      await supabase.from('clothing_items').delete().eq('user_id', user.id);
+      await supabase.auth.signOut();
+      showToast('Account data deleted. You have been signed out.', 'success');
+      router.replace('/login');
+    } catch {
+      showToast('Could not delete account data. Try again.', 'error');
+    }
     setShowDeleteConfirm(false);
   };
 

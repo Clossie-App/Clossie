@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { useClothingItems } from '@/hooks/useClothingItems';
 import { useToast } from '@/lib/toast-context';
+import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import ClothingGrid from '@/components/closet/ClothingGrid';
 import { ClothingItem, ClothingCategory, CATEGORY_LABELS, CATEGORY_ICONS, Season, Occasion, SEASON_LABELS, OCCASION_LABELS } from '@/lib/types';
 import { useRouter } from 'next/navigation';
@@ -16,8 +17,9 @@ const ALL_CATEGORIES: (ClothingCategory | 'all')[] = [
 export default function ClosetPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const { items, loading, deleteItem, updateItem } = useClothingItems();
+  const { items, loading, fetchItems, deleteItem, updateItem } = useClothingItems();
   const { showToast } = useToast();
+  const { pulling, pullDistance, refreshing, handlers: pullHandlers } = usePullToRefresh(fetchItems);
   const [activeCategory, setActiveCategory] = useState<ClothingCategory | 'all'>('all');
   const [filterSeason, setFilterSeason] = useState<Season | 'all'>('all');
   const [filterOccasion, setFilterOccasion] = useState<Occasion | 'all'>('all');
@@ -100,7 +102,14 @@ export default function ClosetPage() {
   if (authLoading) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50" {...pullHandlers}>
+      {/* Pull-to-refresh indicator */}
+      {pulling && (
+        <div className="flex justify-center py-2" style={{ height: pullDistance }}>
+          <div className={`w-6 h-6 border-2 border-clossie-200 border-t-clossie-600 rounded-full ${refreshing ? 'ptr-spinner' : ''}`}
+            style={{ opacity: Math.min(pullDistance / 40, 1) }} />
+        </div>
+      )}
       {/* Header */}
       <div className="bg-white/90 backdrop-blur-lg sticky top-0 z-40 border-b border-gray-100">
         <div className="px-4 pt-4 pb-2">

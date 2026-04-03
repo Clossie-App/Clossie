@@ -96,7 +96,14 @@ function StaticCard({ item }: { item: ClothingItem }) {
 function CardContent({ item, showHeart }: { item: ClothingItem; showHeart?: boolean }) {
   return (
     <>
-      <img src={item.image_url} alt={item.subcategory || item.category} className="w-full h-full object-cover" />
+      <img
+        src={item.image_url}
+        alt={item.subcategory || item.category}
+        className="w-full h-full object-cover"
+        loading="lazy"
+        decoding="async"
+        onLoad={(e) => (e.target as HTMLImageElement).classList.add('loaded')}
+      />
       {item.is_favorite && <div className="absolute top-1.5 right-1.5 text-sm">&#x2764;&#xFE0F;</div>}
       {item.is_wishlist && (
         <div className="absolute top-1.5 left-1.5 bg-clossie-100 text-clossie-600 text-xs px-1.5 py-0.5 rounded-full font-medium">Want</div>

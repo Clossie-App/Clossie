@@ -6,14 +6,26 @@ import { AuthProvider } from '@/lib/auth-context';
 import { ToastProvider } from '@/lib/toast-context';
 
 export const metadata: Metadata = {
-  title: 'Clossie - My Closet',
-  description: 'Your smart closet organizer',
+  title: 'Clossie - Your Smart Closet',
+  description: 'AI-powered closet organizer. Snap a photo, get instant outfit ideas, and never ask "what should I wear?" again.',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
     title: 'Clossie',
   },
+  openGraph: {
+    title: 'Clossie - Your Smart Closet',
+    description: 'AI-powered closet organizer. Snap a photo, get instant outfit ideas.',
+    type: 'website',
+    siteName: 'Clossie',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Clossie - Your Smart Closet',
+    description: 'AI-powered closet organizer. Snap a photo, get instant outfit ideas.',
+  },
+  keywords: ['closet organizer', 'outfit planner', 'AI fashion', 'wardrobe app', 'what to wear'],
 };
 
 export const viewport: Viewport = {
@@ -38,7 +50,7 @@ export default function RootLayout({
         <AuthProvider>
           <ToastProvider>
             <SessionGuard />
-            <main className="pb-20 max-w-lg mx-auto">
+            <main className="pb-20 max-w-lg mx-auto animate-page-enter">
               {children}
             </main>
             <BottomNav />

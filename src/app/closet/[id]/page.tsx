@@ -139,6 +139,29 @@ export default function ItemDetailPage() {
         </button>
       </div>
 
+      {/* KAN-27: Convert wishlist item to owned */}
+      {item.is_wishlist && (
+        <div className="px-4 py-2">
+          <button
+            onClick={async () => {
+              if (!user) return;
+              const { data, error } = await supabase
+                .from('clothing_items')
+                .update({ is_wishlist: false })
+                .eq('id', item.id)
+                .eq('user_id', user.id)
+                .select()
+                .single();
+              if (error) { showToast('Could not update item.', 'error'); return; }
+              if (data) { setItem(data as ClothingItem); showToast('Moved to your closet!', 'success'); }
+            }}
+            className="w-full py-3 bg-green-600 text-white rounded-2xl text-sm font-semibold active:scale-[0.98] transition"
+          >
+            I Got It! Move to My Closet
+          </button>
+        </div>
+      )}
+
       {/* Details */}
       <div className="px-4 space-y-3 mt-2">
         <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
