@@ -11,6 +11,7 @@ interface CompactItem {
   season: string;
   occasion: string;
   wear_count: number;
+  last_worn_at: string | null;
   is_favorite: boolean;
 }
 
@@ -33,6 +34,7 @@ function buildPrompt(
     season: sanitize(i.season),
     occasion: sanitize(i.occasion),
     wear_count: typeof i.wear_count === 'number' ? i.wear_count : 0,
+    last_worn: sanitize(i.last_worn_at),
     is_favorite: Boolean(i.is_favorite),
   }));
 
@@ -53,6 +55,7 @@ Rules:
   }
   if (filters.preferUnworn !== false) {
     rules += `\n- Prefer items with lower wear_count to help the user explore their full wardrobe`;
+    rules += `\n- Avoid items with recent last_worn dates — mix in things not worn recently`;
     rules += `\n- Items marked as is_favorite: true are pieces the user loves — try to include at least one favorite per outfit`;
   }
   if (filters.mustIncludeItemId) {

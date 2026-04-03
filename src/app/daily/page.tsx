@@ -139,6 +139,7 @@ function DailyContent() {
       season: i.season,
       occasion: i.occasion,
       wear_count: i.wear_count,
+      last_worn_at: i.last_worn_at,
       is_favorite: i.is_favorite,
     }));
 
