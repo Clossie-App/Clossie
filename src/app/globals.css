@@ -21,6 +21,10 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overscroll-behavior: none;
+}
+
+/* Prevent text selection on interactive elements only */
+button, a, [role="link"], [role="switch"] {
   -webkit-user-select: none;
   user-select: none;
 }

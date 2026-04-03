@@ -50,12 +50,12 @@ export default function ClothingGrid({
         <h3 className="text-lg font-semibold text-gray-700 mb-1">{emptyTitle}</h3>
         <p className="text-gray-400 text-center text-sm mb-4">{emptyDescription}</p>
         {emptyAction && (
-          <a
+          <Link
             href={emptyAction.href}
             className="px-6 py-2.5 bg-clossie-600 text-white rounded-xl text-sm font-semibold active:scale-95 transition"
           >
             {emptyAction.label}
-          </a>
+          </Link>
         )}
       </div>
     );

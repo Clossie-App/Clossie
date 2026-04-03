@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useCallback, useRef } from 'react';
+import { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
 import { haptics } from './haptics';
 
 type ToastType = 'success' | 'error' | 'info';
@@ -20,6 +20,12 @@ const ToastContext = createContext<ToastContextValue | null>(null);
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const counterRef = useRef(0);
+  const timersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
+
+  // Clean up timers on unmount
+  useEffect(() => {
+    return () => { timersRef.current.forEach(clearTimeout); };
+  }, []);
 
   const showToast = useCallback((message: string, type: ToastType = 'info') => {
     if (type === 'success') haptics.success();
@@ -27,9 +33,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     else haptics.light();
     const id = ++counterRef.current;
     setToasts((prev) => [...prev, { id, message, type }]);
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
+      timersRef.current.delete(timer);
     }, 3500);
+    timersRef.current.add(timer);
   }, []);
 
   return (

@@ -30,15 +30,15 @@ export async function POST(request: NextRequest) {
     const removeBgKey = process.env.REMOVE_BG_API_KEY;
     if (removeBgKey) {
       const result = await tryRemoveBg(removeBgKey, imageFile);
-      if (result) return new NextResponse(result as any, { headers: { 'Content-Type': 'image/png' } });
+      if (result) return new NextResponse(new Uint8Array(result), { headers: { 'Content-Type': 'image/png' } });
     }
 
     // Try free Hugging Face model (no key needed)
     const hfResult = await tryHuggingFace(imageArrayBuffer);
-    if (hfResult) return new NextResponse(hfResult as any, { headers: { 'Content-Type': 'image/png' } });
+    if (hfResult) return new NextResponse(new Uint8Array(hfResult), { headers: { 'Content-Type': 'image/png' } });
 
     // Fallback: return original image
-    return new NextResponse(imageArrayBuffer as any, {
+    return new NextResponse(new Uint8Array(imageArrayBuffer), {
       headers: { 'Content-Type': imageFile.type },
     });
   } catch (error) {
@@ -54,11 +54,15 @@ async function tryRemoveBg(apiKey: string, imageFile: File): Promise<ArrayBuffer
     bgFormData.append('size', 'regular');
     bgFormData.append('format', 'png');
 
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
     const response = await fetch('https://api.remove.bg/v1.0/removebg', {
       method: 'POST',
       headers: { 'X-Api-Key': apiKey },
       body: bgFormData,
+      signal: controller.signal,
     });
+    clearTimeout(timeout);
 
     if (!response.ok) return null;
     return await response.arrayBuffer();

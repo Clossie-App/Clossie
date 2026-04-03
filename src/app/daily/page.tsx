@@ -89,13 +89,17 @@ function DailyContent() {
   }, [user, authLoading, router]);
 
   // Auto-generate on page load
+  const abortRef = useRef<AbortController | null>(null);
   useEffect(() => {
     if (autoTriggered.current) return;
     if (itemsLoading || items.length === 0) return;
     const available = items.filter((i) => !i.in_laundry && !i.is_wishlist);
     if (available.length < 5) return;
     autoTriggered.current = true;
-    handleGenerate();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    handleGenerate(controller.signal);
+    return () => controller.abort();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [itemsLoading, items.length]);
 
@@ -112,7 +116,7 @@ function DailyContent() {
 
   const availableItems = items.filter((i) => !i.in_laundry && !i.is_wishlist);
 
-  const handleGenerate = async () => {
+  const handleGenerate = async (signal?: AbortSignal) => {
     setLoading(true);
     setError('');
     setOutfit(null);
@@ -147,6 +151,7 @@ function DailyContent() {
           season: currentSeason,
           preferUnworn: true,
         }),
+        signal,
       });
 
       if (!res.ok) throw new Error('Failed');
@@ -275,7 +280,7 @@ function DailyContent() {
             <div className="text-3xl mb-2">😕</div>
             <p className="text-red-600 text-sm mb-3">{error}</p>
             <button
-              onClick={handleGenerate}
+              onClick={() => handleGenerate()}
               className="px-5 py-2.5 bg-clossie-600 text-white rounded-xl text-sm font-semibold"
             >
               Try Again

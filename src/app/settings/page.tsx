@@ -209,8 +209,12 @@ export default function SettingsPage() {
         <p className="text-center text-xs text-gray-300 dark:text-gray-600 pt-2 pb-4">Made with &#x2764;&#xFE0F; by Clossie</p>
       </div>
       {showDeleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-6">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 max-w-sm w-full space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-6"
+          onClick={() => { setShowDeleteConfirm(false); setDeleteConfirmText(''); }}
+          onKeyDown={(e) => { if (e.key === 'Escape') { setShowDeleteConfirm(false); setDeleteConfirmText(''); } }}>
+          <div role="dialog" aria-modal="true" aria-label="Delete account confirmation"
+            className="bg-white dark:bg-gray-800 rounded-2xl p-6 max-w-sm w-full space-y-4"
+            onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-bold text-gray-900 dark:text-white">Delete Account?</h3>
             <p className="text-sm text-gray-500 dark:text-gray-400">This will permanently delete your account and all your data. This action cannot be undone.</p>
             <p className="text-sm text-gray-600 dark:text-gray-300 font-medium">Type <span className="font-mono text-red-500">DELETE</span> to confirm:</p>

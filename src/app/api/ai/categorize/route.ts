@@ -77,10 +77,13 @@ export async function POST(request: NextRequest) {
 }
 
 async function callGemini(apiKey: string, imageBase64: string): Promise<string | null> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
     {
       method: 'POST',
+      signal: controller.signal,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents: [
@@ -103,14 +106,18 @@ async function callGemini(apiKey: string, imageBase64: string): Promise<string |
       }),
     }
   );
+  clearTimeout(timeout);
 
   const data = await response.json();
   return data.candidates?.[0]?.content?.parts?.[0]?.text ?? null;
 }
 
 async function callOpenAI(apiKey: string, imageBase64: string): Promise<string | null> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 15000);
   const response = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
+    signal: controller.signal,
     headers: {
       Authorization: `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
@@ -134,6 +141,7 @@ async function callOpenAI(apiKey: string, imageBase64: string): Promise<string |
       temperature: 0.1,
     }),
   });
+  clearTimeout(timeout);
 
   const data = await response.json();
   return data.choices?.[0]?.message?.content ?? null;
