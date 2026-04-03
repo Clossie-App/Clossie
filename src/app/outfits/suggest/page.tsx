@@ -201,7 +201,7 @@ function SuggestContent() {
   // Empty state: not enough items
   if (!itemsLoading && availableItems.length < 5) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
         <Header onBack={() => router.back()} />
         <div className="flex flex-col items-center justify-center py-20 px-6">
           <div className="text-5xl mb-4">&#x1F455;</div>
@@ -222,7 +222,7 @@ function SuggestContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       <Header onBack={() => router.back()} />
 
       <div className="p-4 space-y-4">
@@ -248,7 +248,7 @@ function SuggestContent() {
         )}
 
         {/* Filters */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+        <div className="bg-white dark:bg-gray-900 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-800">
           <div className="flex gap-2 mb-3">
             <select
               value={occasion}
@@ -345,7 +345,7 @@ function SuggestContent() {
           suggestions.map((suggestion, index) => (
             <div
               key={index}
-              className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden animate-slide-up"
+              className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden animate-slide-up"
               style={{ animationDelay: `${index * 150}ms` }}
             >
               <div className="p-4">
@@ -411,7 +411,7 @@ function SuggestContent() {
 
 function Header({ onBack }: { onBack: () => void }) {
   return (
-    <div className="bg-white/90 backdrop-blur-lg sticky top-0 z-40 border-b border-gray-100 px-4 py-3">
+    <div className="bg-white/90 dark:bg-gray-950/90 backdrop-blur-lg sticky top-0 z-40 border-b border-gray-100 dark:border-gray-800 px-4 py-3">
       <div className="flex items-center justify-between">
         <button onClick={onBack} className="text-gray-400 p-1" aria-label="Go back">
           <svg
@@ -425,7 +425,7 @@ function Header({ onBack }: { onBack: () => void }) {
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
           </svg>
         </button>
-        <h1 className="text-lg font-semibold text-gray-900">AI Outfit Ideas</h1>
+        <h1 className="text-lg font-semibold text-gray-900 dark:text-white">AI Outfit Ideas</h1>
         <div className="w-6" />
       </div>
     </div>

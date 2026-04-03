@@ -132,8 +132,8 @@ export default function SettingsPage() {
   const userName = user?.user_metadata?.full_name || user?.email || 'User';
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
-      <div className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-lg sticky top-0 z-40 border-b border-gray-100 dark:border-gray-800 px-4 py-4">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 transition-colors">
+      <div className="bg-white/90 dark:bg-gray-950/90 backdrop-blur-lg sticky top-0 z-40 border-b border-gray-100 dark:border-gray-800 px-4 py-4">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Settings</h1>
       </div>
       <div className="p-4 space-y-4">

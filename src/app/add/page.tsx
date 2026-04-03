@@ -297,7 +297,7 @@ function AddItemContent() {
   const cardsRemaining = reviewCards.length - currentCardIndex - 1;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
 
       {/* Header */}
       <div className="bg-white/90 backdrop-blur-lg sticky top-0 z-40 border-b border-gray-100 px-4 py-3">

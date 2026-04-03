@@ -231,7 +231,7 @@ function DailyContent() {
   // Not enough items
   if (!itemsLoading && availableItems.length < 5) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
         <div className="px-6 pt-12 pb-6">
           <p className="text-gray-400 text-sm">{greeting}{firstName ? `, ${firstName}` : ''}</p>
           <h1 className="text-2xl font-bold text-gray-900 mt-1">Today&apos;s Outfit</h1>
@@ -255,7 +255,7 @@ function DailyContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       {/* Header */}
       <div className="px-6 pt-12 pb-4">
         <p className="text-gray-400 text-sm">{greeting}{firstName ? `, ${firstName}` : ''}</p>

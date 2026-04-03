@@ -28,7 +28,7 @@ export default function PrivacyPolicyPage() {
 
         <section>
           <h2 className="font-semibold text-gray-900 dark:text-white mb-2">AI Processing</h2>
-          <p>When you add items, your photos are sent to Google Gemini for categorization and clothing detection. These images are processed in real-time and are not stored by the AI provider beyond the request.</p>
+          <p>When you add items, your photos are sent to Google Gemini for categorization and clothing detection. Processing is governed by Google's API data usage policies. We recommend reviewing Google's terms for details on data handling.</p>
         </section>
 
         <section>

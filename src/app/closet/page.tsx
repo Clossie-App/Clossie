@@ -111,7 +111,7 @@ export default function ClosetPage() {
         </div>
       )}
       {/* Header */}
-      <div className="bg-white/90 backdrop-blur-lg sticky top-0 z-40 border-b border-gray-100">
+      <div className="bg-white/90 dark:bg-gray-950/90 backdrop-blur-lg sticky top-0 z-40 border-b border-gray-100 dark:border-gray-800">
         <div className="px-4 pt-4 pb-2">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold text-gray-900">My Closet</h1>
