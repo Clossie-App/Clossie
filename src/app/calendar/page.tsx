@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { createClient } from '@/lib/supabase';
-import { WearLog, Outfit, ClothingItem } from '@/lib/types';
+import { Outfit, ClothingItem, SEASON_LABELS, OCCASION_LABELS, Season, Occasion } from '@/lib/types';
 
 interface WearEntry {
   date: string;
@@ -55,12 +55,13 @@ export default function CalendarPage() {
       .in('outfit_id', outfitIds);
 
     const clothingIds = [...new Set((outfitItems || []).map((oi) => oi.clothing_item_id))];
-    const { data: clothing } = await supabase
-      .from('clothing_items')
-      .select('*')
-      .in('id', clothingIds.length > 0 ? clothingIds : ['none']);
+    let clothing: ClothingItem[] = [];
+    if (clothingIds.length > 0) {
+      const { data } = await supabase.from('clothing_items').select('*').in('id', clothingIds);
+      clothing = (data || []) as ClothingItem[];
+    }
 
-    const clothingMap = new Map((clothing || []).map((c) => [c.id, c as ClothingItem]));
+    const clothingMap = new Map(clothing.map((c) => [c.id, c]));
 
     const entries: WearEntry[] = logs.map((log) => {
       const outfit = (outfits || []).find((o) => o.id === log.outfit_id);
@@ -180,11 +181,23 @@ export default function CalendarPage() {
         <div className="px-4 py-3">
           {selectedEntry ? (
             <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-              <h3 className="font-semibold text-gray-800 mb-2">{selectedEntry.outfit.name}</h3>
+              <h3 className="font-semibold text-gray-800 mb-1">{selectedEntry.outfit.name}</h3>
+              <div className="flex gap-1.5 mb-3">
+                {selectedEntry.outfit.season && (
+                  <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+                    {SEASON_LABELS[selectedEntry.outfit.season as Season] || selectedEntry.outfit.season}
+                  </span>
+                )}
+                {selectedEntry.outfit.occasion && (
+                  <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+                    {OCCASION_LABELS[selectedEntry.outfit.occasion as Occasion] || selectedEntry.outfit.occasion}
+                  </span>
+                )}
+              </div>
               <div className="flex gap-2 overflow-x-auto hide-scrollbar">
                 {selectedEntry.outfit.items.map((item) => (
                   <div key={item.id} className="w-16 h-16 flex-shrink-0 bg-gray-50 rounded-xl overflow-hidden">
-                    <img src={item.image_url} alt={item.category} className="w-full h-full object-contain" />
+                    <img src={item.image_url} alt={item.subcategory || item.category} className="w-full h-full object-contain" loading="lazy" />
                   </div>
                 ))}
               </div>

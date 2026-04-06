@@ -30,6 +30,14 @@ const STEPS = [
     bg: 'from-pink-50 to-white',
   },
   {
+    emoji: '✨',
+    title: () => 'What\'s your style vibe?',
+    subtitle: 'Help the AI understand you',
+    description: '',
+    bg: 'from-amber-50 to-white',
+    isQuiz: true,
+  },
+  {
     emoji: '🚀',
     title: () => 'Ready to build your closet?',
     subtitle: 'Start with your first item',
@@ -40,11 +48,31 @@ const STEPS = [
   },
 ];
 
+const STYLE_OPTIONS = [
+  { id: 'casual', emoji: '👟', label: 'Casual & Comfy' },
+  { id: 'classic', emoji: '👔', label: 'Classic & Polished' },
+  { id: 'streetwear', emoji: '🧢', label: 'Streetwear' },
+  { id: 'boho', emoji: '🌻', label: 'Boho & Free' },
+  { id: 'minimalist', emoji: '⬜', label: 'Minimalist' },
+  { id: 'glam', emoji: '💎', label: 'Glam & Bold' },
+];
+
+interface StepDef {
+  emoji: string;
+  title: (name: string) => string;
+  subtitle: string;
+  description: string;
+  bg: string;
+  isFinal?: boolean;
+  isQuiz?: boolean;
+}
+
 export default function OnboardingPage() {
   const { user, loading, onboarded, completeOnboarding } = useAuth();
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [transitioning, setTransitioning] = useState(false);
+  const [selectedStyles, setSelectedStyles] = useState<Set<string>>(new Set());
   const touchRef = useRef<{ startX: number; startY: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -65,17 +93,26 @@ export default function OnboardingPage() {
     [transitioning]
   );
 
+  const saveStylePrefs = () => {
+    if (selectedStyles.size > 0) {
+      try { localStorage.setItem('clossie-styles', JSON.stringify([...selectedStyles])); } catch {}
+    }
+  };
+
   const handleSkip = async () => {
+    saveStylePrefs();
     await completeOnboarding();
     router.replace('/closet');
   };
 
   const handleAddFirst = async () => {
+    saveStylePrefs();
     await completeOnboarding();
     router.push('/add');
   };
 
   const handleExplore = async () => {
+    saveStylePrefs();
     await completeOnboarding();
     router.replace('/closet');
   };
@@ -148,9 +185,42 @@ export default function OnboardingPage() {
         <p className="text-clossie-600 font-medium text-center mb-4">
           {current.subtitle}
         </p>
-        <p className="text-gray-500 text-center text-sm leading-relaxed max-w-xs">
-          {current.description}
-        </p>
+        {current.description && (
+          <p className="text-gray-500 text-center text-sm leading-relaxed max-w-xs">
+            {current.description}
+          </p>
+        )}
+
+        {/* Style quiz */}
+        {(current as StepDef).isQuiz && (
+          <div className="mt-4 w-full max-w-xs">
+            <p className="text-gray-400 text-xs text-center mb-3">Pick all that fit you (you can change later)</p>
+            <div className="grid grid-cols-2 gap-2">
+              {STYLE_OPTIONS.map((style) => {
+                const selected = selectedStyles.has(style.id);
+                return (
+                  <button
+                    key={style.id}
+                    onClick={() => {
+                      setSelectedStyles(prev => {
+                        const next = new Set(prev);
+                        if (next.has(style.id)) next.delete(style.id);
+                        else next.add(style.id);
+                        return next;
+                      });
+                    }}
+                    className={`flex items-center gap-2 px-3 py-3 rounded-xl text-sm font-medium transition ${
+                      selected ? 'bg-clossie-100 text-clossie-700 ring-2 ring-clossie-400' : 'bg-gray-100 text-gray-600'
+                    }`}
+                  >
+                    <span className="text-lg">{style.emoji}</span>
+                    {style.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Final step buttons */}
         {current.isFinal && (

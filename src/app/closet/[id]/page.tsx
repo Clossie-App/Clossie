@@ -179,10 +179,32 @@ export default function ItemDetailPage() {
             {item.brand && <Detail label="Brand" value={item.brand} />}
             {item.size && <Detail label="Size" value={item.size} />}
             {item.price != null && <Detail label="Price" value={`$${item.price.toFixed(2)}`} />}
-            {item.price != null && item.wear_count > 0 && (
-              <Detail label="Cost/Wear" value={`$${(item.price / item.wear_count).toFixed(2)}`} />
-            )}
           </div>
+          {/* Cost-per-wear highlight */}
+          {item.price != null && item.price > 0 && (
+            <div className="mt-3 pt-3 border-t border-gray-100">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-gray-500 uppercase">Cost Per Wear</p>
+                  <p className="text-lg font-bold text-gray-900 mt-0.5">
+                    {item.wear_count > 0 ? `$${(item.price / item.wear_count).toFixed(2)}` : 'Not worn yet'}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-gray-400">{item.wear_count} wear{item.wear_count !== 1 ? 's' : ''}</p>
+                  {item.wear_count > 0 && (
+                    <p className={`text-xs font-medium mt-0.5 ${
+                      item.price / item.wear_count < 5 ? 'text-green-600' :
+                      item.price / item.wear_count < 15 ? 'text-yellow-600' : 'text-red-500'
+                    }`}>
+                      {item.price / item.wear_count < 5 ? 'Great value!' :
+                       item.price / item.wear_count < 15 ? 'Getting there' : 'Wear it more!'}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
           {item.notes && (
             <div className="mt-3 pt-3 border-t border-gray-100">
               <p className="text-xs font-medium text-gray-500 uppercase">Notes</p>

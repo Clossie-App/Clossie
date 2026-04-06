@@ -7,6 +7,7 @@ import { useClothingItems } from '@/hooks/useClothingItems';
 import { useOutfits } from '@/hooks/useOutfits';
 import { useToast } from '@/lib/toast-context';
 import { haptics } from '@/lib/haptics';
+import { getWeather } from '@/lib/weather';
 import {
   ClothingItem,
   OutfitSuggestion,
@@ -74,13 +75,21 @@ function DailyContent() {
   const [error, setError] = useState('');
   const [selectedMood, setSelectedMood] = useState<Mood | null>(null);
 
+  const [weatherData, setWeatherData] = useState<{ temp: number; condition: string; description: string; suggestedSeason: string } | null>(null);
+
   const greeting = getGreeting();
-  const currentSeason = getSeasonFromMonth();
+  const calendarSeason = getSeasonFromMonth();
+  const currentSeason = weatherData?.suggestedSeason || calendarSeason;
   const firstName = user?.user_metadata?.full_name?.split(' ')[0] || '';
 
   useEffect(() => {
     if (!authLoading && !user) router.replace('/login');
   }, [user, authLoading, router]);
+
+  // Fetch weather on mount
+  useEffect(() => {
+    getWeather().then(w => { if (w) setWeatherData(w); });
+  }, []);
 
   // Rotate loading messages
   useEffect(() => {
@@ -277,9 +286,19 @@ function DailyContent() {
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
           {outfit || loading ? 'Today\u2019s Outfit' : 'How do you want to feel?'}
         </h1>
-        <p className="text-xs text-gray-400 mt-1">
-          {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-        </p>
+        <div className="flex items-center gap-2 mt-1">
+          <p className="text-xs text-gray-400">
+            {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+          </p>
+          {weatherData && (
+            <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-medium">
+              {weatherData.condition === 'sunny' ? '☀️' :
+               weatherData.condition === 'cloudy' ? '☁️' :
+               weatherData.condition === 'rainy' ? '🌧️' :
+               weatherData.condition === 'snowy' ? '❄️' : '⛈️'} {weatherData.temp}°F
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Mood Selector Grid — shown when no outfit generated yet */}
