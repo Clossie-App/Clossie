@@ -76,6 +76,7 @@ function DailyContent() {
   const [selectedMood, setSelectedMood] = useState<Mood | null>(null);
 
   const [weatherData, setWeatherData] = useState<{ temp: number; condition: string; description: string; suggestedSeason: string } | null>(null);
+  const [stylePrefs, setStylePrefs] = useState<string[]>([]);
 
   const greeting = getGreeting();
   const calendarSeason = getSeasonFromMonth();
@@ -86,9 +87,18 @@ function DailyContent() {
     if (!authLoading && !user) router.replace('/login');
   }, [user, authLoading, router]);
 
-  // Fetch weather on mount
+  // Fetch weather + style preferences on mount
   useEffect(() => {
     getWeather().then(w => { if (w) setWeatherData(w); });
+    try {
+      const saved = JSON.parse(localStorage.getItem('clossie-styles') || '[]');
+      if (Array.isArray(saved)) setStylePrefs(saved);
+    } catch {}
+    // Also read the suggestion style from settings if set
+    const settingsStyle = localStorage.getItem('clossie-style');
+    if (settingsStyle && settingsStyle !== 'Classic') {
+      setStylePrefs(prev => [...prev, settingsStyle.toLowerCase()]);
+    }
   }, []);
 
   // Rotate loading messages
@@ -154,6 +164,7 @@ function DailyContent() {
           preferUnworn: true,
           mood: mood?.id,
           count: 1,
+          stylePrefs: stylePrefs.length > 0 ? stylePrefs : undefined,
         }),
         signal: controller.signal,
       });

@@ -85,7 +85,7 @@ export default function ItemDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center dark:bg-gray-950">
         <div className="w-10 h-10 border-4 border-clossie-200 border-t-clossie-600 rounded-full animate-spin" />
       </div>
     );
@@ -93,8 +93,8 @@ export default function ItemDetailPage() {
 
   if (!item) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center px-6">
-        <p className="text-gray-500">Item not found</p>
+      <div className="min-h-screen flex flex-col items-center justify-center px-6 dark:bg-gray-950">
+        <p className="text-gray-500 dark:text-gray-400">Item not found</p>
         <button onClick={() => router.push('/closet')} className="text-clossie-600 mt-2">
           Back to Closet
         </button>
@@ -105,14 +105,14 @@ export default function ItemDetailPage() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       {/* Header */}
-      <div className="bg-white/90 backdrop-blur-lg sticky top-0 z-40 border-b border-gray-100 px-4 py-3">
+      <div className="bg-white/90 dark:bg-gray-950/90 backdrop-blur-lg sticky top-0 z-40 border-b border-gray-100 dark:border-gray-800 px-4 py-3">
         <div className="flex items-center justify-between">
-          <button onClick={() => router.back()} className="text-gray-400 p-1" aria-label="Go back">
+          <button onClick={() => router.back()} className="text-gray-400 dark:text-gray-500 p-1" aria-label="Go back">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
             </svg>
           </button>
-          <h1 className="text-lg font-semibold text-gray-900">
+          <h1 className="text-lg font-semibold text-gray-900 dark:text-white">
             {CATEGORY_ICONS[item.category]} {CATEGORY_LABELS[item.category]}
           </h1>
           <button onClick={toggleFavorite} className="p-1 text-xl" aria-label={item.is_favorite ? 'Remove from favorites' : 'Add to favorites'}>
@@ -122,8 +122,8 @@ export default function ItemDetailPage() {
       </div>
 
       {/* Image */}
-      <div className="bg-white p-6 flex justify-center">
-        <div className="w-64 h-64 rounded-3xl overflow-hidden bg-gray-50">
+      <div className="bg-white dark:bg-gray-800 p-6 flex justify-center">
+        <div className="w-64 h-64 rounded-3xl overflow-hidden bg-gray-50 dark:bg-gray-900">
           <img src={item.image_url} alt={`${item.subcategory || item.category}${item.color ? ` in ${item.color}` : ''}`} className="w-full h-full object-contain" />
         </div>
       </div>
@@ -134,21 +134,21 @@ export default function ItemDetailPage() {
           onClick={toggleLaundry}
           className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition ${
             item.in_laundry
-              ? 'bg-blue-100 text-blue-600'
-              : 'bg-gray-100 text-gray-600'
+              ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400'
+              : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
           }`}
         >
           {item.in_laundry ? '\uD83E\uDDFA In Laundry' : '\uD83E\uDDFA Mark as Laundry'}
         </button>
         <button
           onClick={() => router.push(`/outfits/builder?item=${item.id}`)}
-          className="flex-1 py-2.5 bg-clossie-100 text-clossie-700 rounded-xl text-sm font-medium"
+          className="flex-1 py-2.5 bg-clossie-100 dark:bg-clossie-900/30 text-clossie-700 dark:text-clossie-300 rounded-xl text-sm font-medium"
         >
           Build Outfit
         </button>
         <button
           onClick={() => router.push(`/outfits/suggest?item=${item.id}`)}
-          className="flex-1 py-2.5 bg-clossie-50 text-clossie-700 rounded-xl text-sm font-medium"
+          className="flex-1 py-2.5 bg-clossie-50 dark:bg-clossie-900/20 text-clossie-700 dark:text-clossie-300 rounded-xl text-sm font-medium"
         >
           Style This
         </button>
@@ -168,7 +168,7 @@ export default function ItemDetailPage() {
 
       {/* Details */}
       <div className="px-4 space-y-3 mt-2">
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-700">
           <div className="grid grid-cols-2 gap-y-3 gap-x-4">
             <Detail label="Category" value={`${CATEGORY_ICONS[item.category]} ${CATEGORY_LABELS[item.category]}`} />
             {item.subcategory && <Detail label="Type" value={item.subcategory} />}
@@ -182,16 +182,16 @@ export default function ItemDetailPage() {
           </div>
           {/* Cost-per-wear highlight */}
           {item.price != null && item.price > 0 && (
-            <div className="mt-3 pt-3 border-t border-gray-100">
+            <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-medium text-gray-500 uppercase">Cost Per Wear</p>
-                  <p className="text-lg font-bold text-gray-900 mt-0.5">
+                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Cost Per Wear</p>
+                  <p className="text-lg font-bold text-gray-900 dark:text-white mt-0.5">
                     {item.wear_count > 0 ? `$${(item.price / item.wear_count).toFixed(2)}` : 'Not worn yet'}
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-xs text-gray-400">{item.wear_count} wear{item.wear_count !== 1 ? 's' : ''}</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500">{item.wear_count} wear{item.wear_count !== 1 ? 's' : ''}</p>
                   {item.wear_count > 0 && (
                     <p className={`text-xs font-medium mt-0.5 ${
                       item.price / item.wear_count < 5 ? 'text-green-600' :
@@ -206,9 +206,9 @@ export default function ItemDetailPage() {
             </div>
           )}
           {item.notes && (
-            <div className="mt-3 pt-3 border-t border-gray-100">
-              <p className="text-xs font-medium text-gray-500 uppercase">Notes</p>
-              <p className="text-sm text-gray-700 mt-1">{item.notes}</p>
+            <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Notes</p>
+              <p className="text-sm text-gray-700 dark:text-gray-300 mt-1">{item.notes}</p>
             </div>
           )}
         </div>
@@ -223,12 +223,12 @@ export default function ItemDetailPage() {
               Delete Item
             </button>
           ) : (
-            <div className="bg-red-50 rounded-2xl p-4 text-center">
-              <p className="text-red-600 text-sm mb-3">Remove this item from your closet?</p>
+            <div className="bg-red-50 dark:bg-red-950/40 rounded-2xl p-4 text-center">
+              <p className="text-red-600 dark:text-red-400 text-sm mb-3">Remove this item from your closet?</p>
               <div className="flex gap-2">
                 <button
                   onClick={() => setShowDeleteConfirm(false)}
-                  className="flex-1 py-2 bg-white rounded-xl text-sm text-gray-600"
+                  className="flex-1 py-2 bg-white dark:bg-gray-800 rounded-xl text-sm text-gray-600 dark:text-gray-400"
                 >
                   Cancel
                 </button>
@@ -250,12 +250,12 @@ export default function ItemDetailPage() {
 function Detail({ label, value, color }: { label: string; value: string; color?: string }) {
   return (
     <div>
-      <p className="text-xs font-medium text-gray-400 uppercase">{label}</p>
+      <p className="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase">{label}</p>
       <div className="flex items-center gap-1.5 mt-0.5">
         {color && (
-          <div className="w-3 h-3 rounded-full border border-gray-200" style={{ backgroundColor: color }} />
+          <div className="w-3 h-3 rounded-full border border-gray-200 dark:border-gray-600" style={{ backgroundColor: color }} />
         )}
-        <p className="text-sm text-gray-800 font-medium">{value}</p>
+        <p className="text-sm text-gray-800 dark:text-gray-200 font-medium">{value}</p>
       </div>
     </div>
   );
