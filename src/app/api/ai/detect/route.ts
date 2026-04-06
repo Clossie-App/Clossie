@@ -2,43 +2,24 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
-const VALID_CATEGORIES = ['tops','bottoms','dresses','outerwear','shoes','bags','accessories','jewelry','activewear','other'];
+const VALID_CATEGORIES = ['tops', 'bottoms', 'dresses', 'outerwear', 'shoes', 'bags', 'accessories', 'jewelry', 'activewear', 'other'];
 
-const DETECT_PROMPT = `You are an expert fashion AI specializing in detecting clothing items in photos. Your task is to find EVERY distinct clothing item, shoe, bag, and accessory that a person is wearing or that is visible in the image.
+const DETECT_PROMPT = `You are an expert fashion AI. Detect every clothing item, shoe, bag, and accessory in this image.
 
-CRITICAL: You must detect items even when they are:
-- Being WORN by a person in a full-body or lifestyle photo
-- Partially hidden or overlapping with other clothing
-- In complex backgrounds (outdoors, crowded scenes, events)
-- Small in the frame (like jewelry, watches, belts)
-- Layered (detect EACH layer separately — e.g., a jacket AND the shirt underneath if visible)
+For EACH item found, return:
+- "label": descriptive name with color (e.g., "white crop top", "black leather boots")
+- "category": one of: tops, bottoms, dresses, outerwear, shoes, bags, accessories, jewelry, activewear, other
+- "box_2d": bounding box as [y_min, x_min, y_max, x_max] normalized to 0-1000 scale
 
-For each item found, return a tight bounding box with coordinates normalized to a 0-1000 scale:
-- 0 = top/left edge of the image
-- 1000 = bottom/right edge of the image
-- Format: [y_min, x_min, y_max, x_max]
-
-Return ONLY a JSON array in this exact format:
-[{"label":"blue denim jeans","category":"bottoms","box":[ymin,xmin,ymax,xmax]},...]
-
-Valid categories: tops, bottoms, dresses, outerwear, shoes, bags, accessories, jewelry, activewear, other
-
-Detection rules:
-- Be THOROUGH — it is better to detect too many items than to miss one
-- Each item gets its own entry even if they overlap
-- "tops" includes t-shirts, blouses, tank tops, crop tops, sweaters, hoodies
-- "bottoms" includes jeans, pants, shorts, skirts, leggings
-- "dresses" includes any one-piece dress, jumpsuit, romper
-- "outerwear" includes jackets, coats, blazers, vests worn as outer layer
-- "shoes" includes any footwear — sneakers, boots, heels, sandals, even if partially visible
-- "bags" includes purses, handbags, backpacks, clutches, tote bags
-- "accessories" includes hats, scarves, belts, sunglasses, watches
-- "jewelry" includes necklaces, earrings, bracelets, rings
-- Labels should be descriptive: include color + item type (e.g., "white crop top", "black leather boots")
-- Make bounding boxes as tight as possible around each individual item
-- If only ONE item is visible, return a one-element array
-- If nothing clothing-related is found, return []
-- Return ONLY the JSON array, no markdown, no explanation`;
+CRITICAL detection rules:
+- Detect items even when WORN on a person in lifestyle/full-body photos
+- Detect each layer separately (jacket AND visible shirt underneath)
+- Detect partially hidden items (shoes partially cut off, etc.)
+- Detect small items: jewelry, watches, belts, sunglasses, hats
+- Be THOROUGH — better to detect too many items than miss one
+- Make bounding boxes tight around each individual item
+- If only one item visible, return a one-element array
+- If nothing clothing-related found, return an empty array []`;
 
 export async function POST(request: NextRequest) {
   // Auth check
@@ -55,66 +36,139 @@ export async function POST(request: NextRequest) {
   if (!geminiKey) return NextResponse.json({ items: [] }, { status: 500 });
 
   try {
-    const { imageBase64 } = await request.json();
+    const { imageBase64, mimeType } = await request.json();
     if (!imageBase64 || typeof imageBase64 !== 'string') return NextResponse.json({ items: [] }, { status: 400 });
     if (imageBase64.length > 20 * 1024 * 1024) return NextResponse.json({ error: 'Image too large' }, { status: 413 });
 
+    // Try Gemini 2.5 Flash first (better detection), fall back to 2.0
+    let items = await detectWithGemini25(geminiKey, imageBase64, mimeType || 'image/jpeg');
+    if (items === null) {
+      items = await detectWithGemini20(geminiKey, imageBase64, mimeType || 'image/jpeg');
+    }
+
+    return NextResponse.json({ items: items || [] });
+  } catch (error) {
+    console.error('Detection error:', error);
+    return NextResponse.json({ items: [], error: 'Detection failed' }, { status: 500 });
+  }
+}
+
+interface RawItem {
+  label?: string;
+  category?: string;
+  box_2d?: number[];
+  box?: number[];
+}
+
+function validateAndNormalize(rawItems: RawItem[]): Array<{ id: string; label: string; category: string; box: number[]; selected: boolean }> {
+  return rawItems
+    .filter((item) => {
+      const box = item.box_2d || item.box;
+      return box && Array.isArray(box) && box.length === 4;
+    })
+    .map((item, index) => {
+      const cat = String(item.category || 'other');
+      const box = (item.box_2d || item.box)!;
+      return {
+        id: `detected-${index}`,
+        label: String(item.label || 'Clothing item').slice(0, 100),
+        category: VALID_CATEGORIES.includes(cat) ? cat : 'other',
+        box: box.map((v: number) => Math.max(0, Math.min(1000, Math.round(v)))),
+        selected: true,
+      };
+    })
+    .filter((item) => {
+      const [y1, x1, y2, x2] = item.box;
+      return (x2 - x1) > 20 && (y2 - y1) > 20;
+    });
+}
+
+async function detectWithGemini25(
+  apiKey: string,
+  imageBase64: string,
+  mimeType: string
+): Promise<Array<{ id: string; label: string; category: string; box: number[]; selected: boolean }> | null> {
+  try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30000); // 30s for complex images
+    const timeout = setTimeout(() => controller.abort(), 45000);
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         signal: controller.signal,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contents: [{ parts: [
-            { text: DETECT_PROMPT },
-            { inline_data: { mime_type: 'image/jpeg', data: imageBase64 } },
-          ]}],
+          contents: [{
+            parts: [
+              { text: DETECT_PROMPT },
+              { inline_data: { mime_type: mimeType, data: imageBase64 } },
+            ],
+          }],
           generationConfig: {
             temperature: 0.1,
-            maxOutputTokens: 1500, // More tokens for complex multi-item photos
+            maxOutputTokens: 4096,
+            responseMimeType: 'application/json',
           },
         }),
       }
     );
     clearTimeout(timeout);
 
+    if (!response.ok) return null;
+
     const data = await response.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '[]';
-    const jsonMatch = text.match(/\[[\s\S]*\]/);
-    const jsonStr = jsonMatch ? jsonMatch[0] : '[]';
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) return null;
 
-    let items = JSON.parse(jsonStr);
-    if (!Array.isArray(items)) items = [];
-
-    // Validate, normalize, and filter bad boxes
-    items = items
-      .filter((item: Record<string, unknown>) =>
-        item.box && Array.isArray(item.box) && (item.box as unknown[]).length === 4
-      )
-      .map((item: Record<string, unknown>, index: number) => {
-        const cat = String(item.category || 'other');
-        const box = (item.box as number[]).map((v: number) => Math.max(0, Math.min(1000, Math.round(v))));
-        return {
-          id: `detected-${index}`,
-          label: String(item.label || 'Clothing item').slice(0, 100),
-          category: VALID_CATEGORIES.includes(cat) ? cat : 'other',
-          box,
-          selected: true,
-        };
-      })
-      // Filter out impossibly small boxes (less than 3% of image in either dimension)
-      .filter((item: { box: number[] }) => {
-        const [y1, x1, y2, x2] = item.box;
-        return (x2 - x1) > 30 && (y2 - y1) > 30;
-      });
-
-    return NextResponse.json({ items });
-  } catch (error) {
-    console.error('Detection error:', error);
-    return NextResponse.json({ items: [], error: 'Detection failed' }, { status: 500 });
+    const parsed = JSON.parse(text);
+    const rawItems: RawItem[] = Array.isArray(parsed) ? parsed : [];
+    return validateAndNormalize(rawItems);
+  } catch (e) {
+    console.error('Gemini 2.5 detection failed, falling back:', e);
+    return null;
   }
+}
+
+async function detectWithGemini20(
+  apiKey: string,
+  imageBase64: string,
+  mimeType: string
+): Promise<Array<{ id: string; label: string; category: string; box: number[]; selected: boolean }>> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000);
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+    {
+      method: 'POST',
+      signal: controller.signal,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{
+          parts: [
+            { text: DETECT_PROMPT + '\n\nReturn ONLY a JSON array, no markdown.' },
+            { inline_data: { mime_type: mimeType, data: imageBase64 } },
+          ],
+        }],
+        generationConfig: { temperature: 0.1, maxOutputTokens: 2000 },
+      }),
+    }
+  );
+  clearTimeout(timeout);
+
+  const data = await response.json();
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '[]';
+  const jsonMatch = text.match(/\[[\s\S]*\]/);
+  const jsonStr = jsonMatch ? jsonMatch[0] : '[]';
+
+  let rawItems: RawItem[] = [];
+  try {
+    const parsed = JSON.parse(jsonStr);
+    rawItems = Array.isArray(parsed) ? parsed : [];
+  } catch {
+    rawItems = [];
+  }
+
+  return validateAndNormalize(rawItems);
 }

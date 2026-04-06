@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/auth-context';
 import { createClient } from '@/lib/supabase';
 import { useToast } from '@/lib/toast-context';
 import { haptics } from '@/lib/haptics';
+import { compressImage } from '@/lib/image-compression';
 import {
   ClothingCategory, Season, Occasion,
   CATEGORY_LABELS, CATEGORY_ICONS, SEASON_LABELS, OCCASION_LABELS,
@@ -144,11 +145,14 @@ function AddItemContent() {
       });
       setOriginalImageEl(img);
 
-      const base64 = await fileToBase64(file);
+      // Compress image before sending to AI (faster, cheaper, fewer timeouts)
+      setStatusMessage('Analyzing clothing...');
+      const compressed = await compressImage(file, 1024, 0.85);
+      const compressedBase64 = await blobToBase64(compressed);
       const res = await fetch('/api/ai/detect', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageBase64: base64 }),
+        body: JSON.stringify({ imageBase64: compressedBase64, mimeType: 'image/jpeg' }),
       });
 
       const { items }: { items: DetectedItem[] } = await res.json();
@@ -657,8 +661,8 @@ function SelectionCanvas({
   const [drawMode, setDrawMode] = useState(false);
   const drawModeRef = useRef(false);
   drawModeRef.current = drawMode;
-  const drawStartRef = useRef<{ x: number; y: number } | null>(null);
-  const drawCurrentRef = useRef<{ x: number; y: number } | null>(null);
+  const lassoPointsRef = useRef<{ x: number; y: number }[]>([]);
+  const isDrawingRef = useRef(false);
 
   // Size canvas to image aspect ratio
   useEffect(() => {
@@ -703,18 +707,31 @@ function SelectionCanvas({
         drawOutline(ctx, item, animTimeRef.current, width, height);
       }
 
-      // Drag rectangle for manual draw mode
-      if (drawModeRef.current && drawStartRef.current && drawCurrentRef.current) {
-        const { x: x1, y: y1 } = drawStartRef.current;
-        const { x: x2, y: y2 } = drawCurrentRef.current;
+      // Freehand lasso path for manual draw mode
+      if (drawModeRef.current && lassoPointsRef.current.length > 1) {
+        const pts = lassoPointsRef.current;
         ctx.save();
         ctx.setLineDash([6, 4]);
         ctx.strokeStyle = 'rgba(255,255,255,0.85)';
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 2.5;
         ctx.shadowColor = 'white';
-        ctx.shadowBlur = 10;
-        ctx.strokeRect(Math.min(x1, x2), Math.min(y1, y2), Math.abs(x2 - x1), Math.abs(y2 - y1));
+        ctx.shadowBlur = 12;
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pts[0].y);
+        for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+        if (!isDrawingRef.current) { ctx.lineTo(pts[0].x, pts[0].y); } // close path when done
+        ctx.stroke();
         ctx.restore();
+
+        // Draw start point indicator
+        if (pts.length > 0 && isDrawingRef.current) {
+          ctx.save();
+          ctx.fillStyle = 'rgba(255,255,255,0.9)';
+          ctx.beginPath();
+          ctx.arc(pts[0].x, pts[0].y, 6, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
       }
 
       animRef.current = requestAnimationFrame(draw);
@@ -738,35 +755,49 @@ function SelectionCanvas({
   const handlePointerDown = (e: React.MouseEvent | React.TouchEvent) => {
     if (!drawModeRef.current) return;
     const pos = getPos(e);
-    drawStartRef.current = pos;
-    drawCurrentRef.current = pos;
+    lassoPointsRef.current = [pos];
+    isDrawingRef.current = true;
   };
 
   const handlePointerMove = (e: React.MouseEvent | React.TouchEvent) => {
-    if (!drawModeRef.current || !drawStartRef.current) return;
-    drawCurrentRef.current = getPos(e);
+    if (!drawModeRef.current || !isDrawingRef.current) return;
+    const pos = getPos(e);
+    const pts = lassoPointsRef.current;
+    // Only add point if it's far enough from the last one (prevents excessive density)
+    if (pts.length > 0) {
+      const last = pts[pts.length - 1];
+      const dist = Math.sqrt((pos.x - last.x) ** 2 + (pos.y - last.y) ** 2);
+      if (dist < 3) return; // skip if too close
+    }
+    lassoPointsRef.current.push(pos);
   };
 
-  const handlePointerUp = (e: React.MouseEvent | React.TouchEvent) => {
-    if (!drawModeRef.current || !drawStartRef.current) return;
-    const end = getPos(e);
-    const canvas = canvasRef.current!;
-    const x1 = Math.min(drawStartRef.current.x, end.x);
-    const y1 = Math.min(drawStartRef.current.y, end.y);
-    const x2 = Math.max(drawStartRef.current.x, end.x);
-    const y2 = Math.max(drawStartRef.current.y, end.y);
+  const handlePointerUp = () => {
+    if (!drawModeRef.current || !isDrawingRef.current) return;
+    isDrawingRef.current = false;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const pts = lassoPointsRef.current;
 
-    if (Math.abs(x2 - x1) > 20 && Math.abs(y2 - y1) > 20) {
+    if (pts.length < 5) { lassoPointsRef.current = []; return; } // too few points
+
+    // Compute bounding box from lasso points
+    const xs = pts.map(p => p.x);
+    const ys = pts.map(p => p.y);
+    const minX = Math.min(...xs), maxX = Math.max(...xs);
+    const minY = Math.min(...ys), maxY = Math.max(...ys);
+
+    // Check if area is meaningful (at least 20x20 canvas pixels)
+    if ((maxX - minX) > 20 && (maxY - minY) > 20) {
       onAddManual([
-        Math.round((y1 / canvas.height) * 1000),
-        Math.round((x1 / canvas.width) * 1000),
-        Math.round((y2 / canvas.height) * 1000),
-        Math.round((x2 / canvas.width) * 1000),
+        Math.round((minY / canvas.height) * 1000),
+        Math.round((minX / canvas.width) * 1000),
+        Math.round((maxY / canvas.height) * 1000),
+        Math.round((maxX / canvas.width) * 1000),
       ]);
       setDrawMode(false);
     }
-    drawStartRef.current = null;
-    drawCurrentRef.current = null;
+    lassoPointsRef.current = [];
   };
 
   const handleClick = (e: React.MouseEvent) => {
@@ -780,7 +811,7 @@ function SelectionCanvas({
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
-    if (drawModeRef.current) { handlePointerUp(e); return; }
+    if (drawModeRef.current) { handlePointerUp(); return; }
     const { x, y } = getPos(e);
     const canvas = canvasRef.current!;
     for (const item of itemsRef.current) {
@@ -804,17 +835,17 @@ function SelectionCanvas({
         onTouchEnd={handleTouchEnd}
       />
       <button
-        onClick={() => { setDrawMode(d => !d); drawStartRef.current = null; drawCurrentRef.current = null; }}
+        onClick={() => { setDrawMode(d => !d); lassoPointsRef.current = []; isDrawingRef.current = false; }}
         className={`absolute bottom-3 right-3 text-xs px-3 py-1.5 rounded-full font-medium transition ${
           drawMode ? 'bg-white text-gray-800' : 'bg-black/60 text-white backdrop-blur-sm'
         }`}
       >
-        {drawMode ? '✕ Cancel' : '+ Draw Manually'}
+        {drawMode ? '✕ Cancel' : '+ Trace Item'}
       </button>
       {drawMode && (
         <div className="absolute top-3 left-0 right-0 flex justify-center pointer-events-none">
           <span className="bg-black/60 text-white text-xs px-3 py-1.5 rounded-full backdrop-blur-sm">
-            Drag to outline an item
+            Trace around the item with your finger
           </span>
         </div>
       )}

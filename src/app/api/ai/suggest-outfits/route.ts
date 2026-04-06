@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { MOODS } from '@/lib/moods';
+
+const moodPromptHints: Record<string, string> = Object.fromEntries(
+  MOODS.map((m) => [m.id, m.promptHint])
+);
 
 interface CompactItem {
   id: string;
@@ -23,7 +28,15 @@ function sanitize(s: string | null | undefined): string {
 
 function buildPrompt(
   items: CompactItem[],
-  filters: { occasion?: string; season?: string; mustIncludeItemId?: string; preferUnworn?: boolean }
+  filters: {
+    occasion?: string;
+    season?: string;
+    mustIncludeItemId?: string;
+    preferUnworn?: boolean;
+    mood?: string;
+    count?: number;
+    contrasting?: boolean;
+  }
 ): string {
   // Use JSON.stringify for safe serialization instead of string interpolation
   const safeItems = items.map((i) => ({
@@ -38,7 +51,9 @@ function buildPrompt(
     is_favorite: Boolean(i.is_favorite),
   }));
 
-  let rules = `You are a fashion stylist AI. Given a user's wardrobe items, suggest 3 complete outfit combinations.
+  const outfitCount = filters.count && filters.count >= 1 && filters.count <= 5 ? filters.count : 3;
+
+  let rules = `You are a fashion stylist AI. Given a user's wardrobe items, suggest ${outfitCount} complete outfit combination${outfitCount === 1 ? '' : 's'}.
 
 Rules:
 - Each outfit MUST use ONLY item IDs from the provided list — do NOT invent new IDs
@@ -61,8 +76,17 @@ Rules:
   if (filters.mustIncludeItemId) {
     rules += `\n- IMPORTANT: At least one outfit MUST include the item with id "${sanitize(filters.mustIncludeItemId)}". Build the other items around it to create a complete look.`;
   }
+  if (filters.mood) {
+    const hint = moodPromptHints[sanitize(filters.mood)] || '';
+    if (hint) {
+      rules += `\n\nMOOD CONTEXT: The user wants to feel "${sanitize(filters.mood)}" today. Style rules for this mood:\n${hint}\nPrioritize these styling rules when selecting items and building outfits.`;
+    }
+  }
+  if (filters.contrasting) {
+    rules += `\n- Make the outfits stylistically DIFFERENT from each other — one more formal/structured, one more relaxed/creative — so the user has a genuine choice between two distinct vibes.`;
+  }
 
-  rules += `\n\nReturn ONLY a JSON array with exactly 3 objects: [{ "name": "...", "item_ids": ["..."], "reason": "..." }]
+  rules += `\n\nReturn ONLY a JSON array with exactly ${outfitCount} object${outfitCount === 1 ? '' : 's'}: [{ "name": "...", "item_ids": ["..."], "reason": "..." }]
 - "name" is a short creative outfit name (2-4 words)
 - "item_ids" is an array of item IDs from the list
 - "reason" is one sentence explaining the style choice`;
@@ -85,7 +109,7 @@ export async function POST(request: NextRequest) {
   const openaiKey = process.env.OPENAI_API_KEY;
 
   try {
-    const { items, occasion, season, mustIncludeItemId, preferUnworn } = await request.json();
+    const { items, occasion, season, mustIncludeItemId, preferUnworn, mood, count, contrasting } = await request.json();
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ error: 'No items provided' }, { status: 400 });
@@ -94,7 +118,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Too many items (max 500)' }, { status: 400 });
     }
 
-    const prompt = buildPrompt(items, { occasion, season, mustIncludeItemId, preferUnworn });
+    const prompt = buildPrompt(items, { occasion, season, mustIncludeItemId, preferUnworn, mood, count, contrasting });
 
     let content: string | null = null;
 
