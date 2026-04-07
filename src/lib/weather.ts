@@ -40,12 +40,17 @@ export async function getWeather(): Promise<WeatherData | null> {
     const { latitude, longitude } = pos.coords;
 
     // Open-Meteo is free, no API key needed
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
     const res = await fetch(
-      `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weather_code&temperature_unit=fahrenheit&timezone=auto`
+      `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,weather_code&temperature_unit=fahrenheit&timezone=auto`,
+      { signal: controller.signal }
     );
+    clearTimeout(timeout);
 
     if (!res.ok) return null;
     const data = await res.json();
+    if (!data?.current || data.current.temperature_2m == null) return null;
 
     const temp = Math.round(data.current.temperature_2m);
     const code = data.current.weather_code;

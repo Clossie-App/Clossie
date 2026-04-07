@@ -75,22 +75,22 @@ export default function StatsPage() {
   if (authLoading) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white/90 backdrop-blur-lg sticky top-0 z-40 border-b border-gray-100 px-4 py-4">
-        <h1 className="text-2xl font-bold text-gray-900">Closet Insights</h1>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+      <div className="bg-white/90 dark:bg-gray-950/90 backdrop-blur-lg sticky top-0 z-40 border-b border-gray-100 dark:border-gray-700 px-4 py-4">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Closet Insights</h1>
       </div>
 
       {itemsLoading ? (
         <div className="p-4 space-y-3">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="bg-white rounded-2xl h-24 animate-pulse" />
+            <div key={i} className="bg-white dark:bg-gray-800 rounded-2xl h-24 animate-pulse" />
           ))}
         </div>
       ) : !stats ? (
         <div className="flex flex-col items-center justify-center py-20 px-6">
           <div className="text-5xl mb-4">📊</div>
-          <h3 className="text-lg font-semibold text-gray-700 mb-1">Your insights are waiting</h3>
-          <p className="text-gray-400 text-center text-sm mb-5">
+          <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-200 mb-1">Your insights are waiting</h3>
+          <p className="text-gray-400 dark:text-gray-500 text-center text-sm mb-5">
             Once you add items and log outfits, you'll see cost-per-wear, your most-worn pieces, and what's collecting dust.
           </p>
           <a
@@ -116,8 +116,8 @@ export default function StatsPage() {
           </div>
 
           {/* Category breakdown */}
-          <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-            <h3 className="font-semibold text-gray-800 mb-3">Wardrobe Breakdown</h3>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-700">
+            <h3 className="font-semibold text-gray-800 dark:text-gray-200 mb-3">Wardrobe Breakdown</h3>
             <div className="space-y-2">
               {Array.from(stats.categoryCount.entries())
                 .sort((a, b) => b[1] - a[1])
@@ -126,13 +126,13 @@ export default function StatsPage() {
                     <span className="text-sm w-28">
                       {CATEGORY_ICONS[cat]} {CATEGORY_LABELS[cat]}
                     </span>
-                    <div className="flex-1 h-5 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="flex-1 h-5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
                       <div
                         className="h-full bg-clossie-400 rounded-full"
                         style={{ width: `${(count / stats.totalItems) * 100}%` }}
                       />
                     </div>
-                    <span className="text-xs text-gray-500 w-8 text-right">{count}</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400 w-8 text-right">{count}</span>
                   </div>
                 ))}
             </div>
@@ -140,15 +140,15 @@ export default function StatsPage() {
 
           {/* Most worn */}
           {stats.mostWorn.length > 0 && stats.mostWorn[0].wear_count > 0 && (
-            <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-              <h3 className="font-semibold text-gray-800 mb-3">Most Worn</h3>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-700">
+              <h3 className="font-semibold text-gray-800 dark:text-gray-200 mb-3">Most Worn</h3>
               <div className="flex gap-2 overflow-x-auto hide-scrollbar">
                 {stats.mostWorn.filter((i) => i.wear_count > 0).map((item) => (
                   <div key={item.id} className="flex-shrink-0 text-center">
-                    <div className="w-16 h-16 bg-gray-50 rounded-xl overflow-hidden border border-gray-100">
+                    <div className="w-16 h-16 bg-gray-50 dark:bg-gray-700 rounded-xl overflow-hidden border border-gray-100 dark:border-gray-700">
                       <img src={item.image_url} alt={item.category} className="w-full h-full object-contain" />
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">{item.wear_count}x</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{item.wear_count}x</p>
                   </div>
                 ))}
               </div>
@@ -157,18 +157,18 @@ export default function StatsPage() {
 
           {/* Best cost per wear */}
           {stats.costPerWear.length > 0 && (
-            <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-              <h3 className="font-semibold text-gray-800 mb-1">Best Cost Per Wear</h3>
-              <p className="text-xs text-gray-400 mb-3">Items giving you the most value</p>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-700">
+              <h3 className="font-semibold text-gray-800 dark:text-gray-200 mb-1">Best Cost Per Wear</h3>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">Items giving you the most value</p>
               <div className="space-y-2">
                 {stats.costPerWear.slice(0, 5).map((item) => (
                   <div key={item.id} className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gray-50 rounded-lg overflow-hidden">
+                    <div className="w-10 h-10 bg-gray-50 dark:bg-gray-700 rounded-lg overflow-hidden">
                       <img src={item.image_url} alt={item.category} className="w-full h-full object-contain" />
                     </div>
                     <div className="flex-1">
-                      <p className="text-sm text-gray-700">{item.subcategory || CATEGORY_LABELS[item.category]}</p>
-                      <p className="text-xs text-gray-400">${item.price?.toFixed(2)} / {item.wear_count} wears</p>
+                      <p className="text-sm text-gray-700 dark:text-gray-300">{item.subcategory || CATEGORY_LABELS[item.category]}</p>
+                      <p className="text-xs text-gray-400 dark:text-gray-500">${item.price?.toFixed(2)} / {item.wear_count} wears</p>
                     </div>
                     <span className="text-sm font-semibold text-green-600">${item.cpw.toFixed(2)}</span>
                   </div>
@@ -179,18 +179,18 @@ export default function StatsPage() {
 
           {/* Neglected items */}
           {stats.neglected.length > 0 && (
-            <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-              <h3 className="font-semibold text-gray-800 mb-1">Collecting Dust</h3>
-              <p className="text-xs text-gray-400 mb-3">Not worn in 3+ months. Donate or style them?</p>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-700">
+              <h3 className="font-semibold text-gray-800 dark:text-gray-200 mb-1">Collecting Dust</h3>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mb-3">Not worn in 3+ months. Donate or style them?</p>
               <div className="flex gap-2 overflow-x-auto hide-scrollbar">
                 {stats.neglected.slice(0, 10).map((item) => (
-                  <div key={item.id} className="w-14 h-14 flex-shrink-0 bg-gray-50 rounded-xl overflow-hidden border border-gray-100 opacity-60">
+                  <div key={item.id} className="w-14 h-14 flex-shrink-0 bg-gray-50 dark:bg-gray-700 rounded-xl overflow-hidden border border-gray-100 dark:border-gray-700 opacity-60">
                     <img src={item.image_url} alt={item.category} className="w-full h-full object-contain" />
                   </div>
                 ))}
                 {stats.neglected.length > 10 && (
-                  <div className="w-14 h-14 flex-shrink-0 bg-gray-100 rounded-xl flex items-center justify-center">
-                    <span className="text-xs text-gray-500">+{stats.neglected.length - 10}</span>
+                  <div className="w-14 h-14 flex-shrink-0 bg-gray-100 dark:bg-gray-700 rounded-xl flex items-center justify-center">
+                    <span className="text-xs text-gray-500 dark:text-gray-400">+{stats.neglected.length - 10}</span>
                   </div>
                 )}
               </div>
@@ -204,9 +204,9 @@ export default function StatsPage() {
 
 function StatCard({ value, label }: { value: number | string; label: string }) {
   return (
-    <div className="bg-white rounded-2xl p-3 shadow-sm border border-gray-100 text-center">
-      <p className="text-xl font-bold text-gray-800">{value}</p>
-      <p className="text-xs text-gray-400">{label}</p>
+    <div className="bg-white dark:bg-gray-800 rounded-2xl p-3 shadow-sm border border-gray-100 dark:border-gray-700 text-center">
+      <p className="text-xl font-bold text-gray-800 dark:text-gray-200">{value}</p>
+      <p className="text-xs text-gray-400 dark:text-gray-500">{label}</p>
     </div>
   );
 }

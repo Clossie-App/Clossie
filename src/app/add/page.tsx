@@ -149,11 +149,15 @@ function AddItemContent() {
       setStatusMessage('Analyzing clothing...');
       const compressed = await compressImage(file, 1024, 0.85);
       const compressedBase64 = await blobToBase64(compressed);
+      const detectCtrl = new AbortController();
+      const detectTimeout = setTimeout(() => detectCtrl.abort(), 30000);
       const res = await fetch('/api/ai/detect', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ imageBase64: compressedBase64, mimeType: 'image/jpeg' }),
+        signal: detectCtrl.signal,
       });
+      clearTimeout(detectTimeout);
 
       const { items }: { items: DetectedItem[] } = await res.json();
 
@@ -166,9 +170,11 @@ function AddItemContent() {
 
       setDetectedItems(items); // all auto-selected by the API
       setStep('select');
-    } catch {
+    } catch (err) {
       const msg = !navigator.onLine
         ? "You're offline. Check your connection and try again."
+        : err instanceof DOMException && err.name === 'AbortError'
+        ? 'Analysis took too long. Try a simpler photo or check your connection.'
         : 'Could not analyse this photo. Please try again.';
       setErrorMessage(msg);
       setStep('error');
@@ -197,15 +203,22 @@ function AddItemContent() {
 
         const bgForm = new FormData();
         bgForm.append('image', cropBlob, 'crop.png');
-        const bgRes = await fetch('/api/ai/remove-bg', { method: 'POST', body: bgForm });
+        const bgCtrl = new AbortController();
+        const bgTimeout = setTimeout(() => bgCtrl.abort(), 30000);
+        const bgRes = await fetch('/api/ai/remove-bg', { method: 'POST', body: bgForm, signal: bgCtrl.signal });
+        clearTimeout(bgTimeout);
         const cleanBlob = bgRes.ok ? await bgRes.blob() : cropBlob;
 
         const base64 = await blobToBase64(cleanBlob);
+        const catCtrl = new AbortController();
+        const catTimeout = setTimeout(() => catCtrl.abort(), 30000);
         const catRes = await fetch('/api/ai/categorize', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ imageBase64: base64 }),
+          signal: catCtrl.signal,
         });
+        clearTimeout(catTimeout);
 
         const tags: AiTags = catRes.ok ? await catRes.json() : {
           category: item.category,
@@ -294,8 +307,9 @@ function AddItemContent() {
         });
         if (dbError) throw dbError;
         savedCount++;
-      } catch {
-        // Continue saving remaining cards
+      } catch (err) {
+        console.error(`Failed to save item "${card.tags.category}":`, err);
+        showToast(`Failed to save ${card.tags.subcategory || card.tags.category}`, 'error');
       }
     }
 

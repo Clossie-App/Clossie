@@ -33,11 +33,16 @@ export async function POST(request: NextRequest) {
       if (result) return new NextResponse(new Uint8Array(result), { headers: { 'Content-Type': 'image/png' } });
     }
 
-    // Try free Hugging Face model (no key needed)
-    const hfResult = await tryHuggingFace(imageArrayBuffer);
+    // Try free Hugging Face models (no key needed)
+    const hfResult = await tryHuggingFace(imageArrayBuffer, 'briaai/RMBG-2.0');
     if (hfResult) return new NextResponse(new Uint8Array(hfResult), { headers: { 'Content-Type': 'image/png' } });
 
-    // Fallback: return original image
+    // Try the older model as second fallback
+    const hfResult2 = await tryHuggingFace(imageArrayBuffer, 'briaai/RMBG-1.4');
+    if (hfResult2) return new NextResponse(new Uint8Array(hfResult2), { headers: { 'Content-Type': 'image/png' } });
+
+    // Fallback: return original image (background not removed)
+    console.warn('All background removal methods failed — returning original image');
     return new NextResponse(new Uint8Array(imageArrayBuffer), {
       headers: { 'Content-Type': imageFile.type },
     });
@@ -71,13 +76,13 @@ async function tryRemoveBg(apiKey: string, imageFile: File): Promise<ArrayBuffer
   }
 }
 
-async function tryHuggingFace(imageData: ArrayBuffer): Promise<ArrayBuffer | null> {
+async function tryHuggingFace(imageData: ArrayBuffer, model: string): Promise<ArrayBuffer | null> {
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 30000);
 
     const response = await fetch(
-      'https://api-inference.huggingface.co/models/briaai/RMBG-1.4',
+      `https://api-inference.huggingface.co/models/${model}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/octet-stream' },
@@ -88,15 +93,21 @@ async function tryHuggingFace(imageData: ArrayBuffer): Promise<ArrayBuffer | nul
 
     clearTimeout(timeout);
 
-    // 503 means model is warming up — fall through to original image fallback
     if (!response.ok) {
-      console.error('Hugging Face error:', response.status, response.status === 503 ? '(model loading)' : '');
+      console.error(`Hugging Face ${model} error:`, response.status, response.status === 503 ? '(model loading)' : '');
       return null;
     }
 
-    return await response.arrayBuffer();
+    const result = await response.arrayBuffer();
+    // Validate we got back an actual image (not an error JSON)
+    if (result.byteLength < 1000) {
+      console.error(`Hugging Face ${model} returned suspiciously small result (${result.byteLength} bytes)`);
+      return null;
+    }
+
+    return result;
   } catch (err: any) {
-    if (err?.name === 'AbortError') console.error('Hugging Face timed out after 30s');
+    if (err?.name === 'AbortError') console.error(`Hugging Face ${model} timed out after 30s`);
     return null;
   }
 }

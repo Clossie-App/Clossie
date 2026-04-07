@@ -36,6 +36,7 @@ function buildPrompt(
     mood?: string;
     count?: number;
     contrasting?: boolean;
+    stylePrefs?: string[];
   }
 ): string {
   // Use JSON.stringify for safe serialization instead of string interpolation
@@ -82,6 +83,12 @@ Rules:
       rules += `\n\nMOOD CONTEXT: The user wants to feel "${sanitize(filters.mood)}" today. Style rules for this mood:\n${hint}\nPrioritize these styling rules when selecting items and building outfits.`;
     }
   }
+  if (filters.stylePrefs && filters.stylePrefs.length > 0) {
+    const safePrefs = filters.stylePrefs.slice(0, 6).map(s => sanitize(s)).filter(Boolean);
+    if (safePrefs.length > 0) {
+      rules += `\n- The user's preferred style vibes are: ${safePrefs.join(', ')}. Lean into these aesthetics when choosing items and building outfits.`;
+    }
+  }
   if (filters.contrasting) {
     rules += `\n- Make the outfits stylistically DIFFERENT from each other — one more formal/structured, one more relaxed/creative — so the user has a genuine choice between two distinct vibes.`;
   }
@@ -109,7 +116,7 @@ export async function POST(request: NextRequest) {
   const openaiKey = process.env.OPENAI_API_KEY;
 
   try {
-    const { items, occasion, season, mustIncludeItemId, preferUnworn, mood, count, contrasting } = await request.json();
+    const { items, occasion, season, mustIncludeItemId, preferUnworn, mood, count, contrasting, stylePrefs } = await request.json();
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ error: 'No items provided' }, { status: 400 });
@@ -118,7 +125,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Too many items (max 500)' }, { status: 400 });
     }
 
-    const prompt = buildPrompt(items, { occasion, season, mustIncludeItemId, preferUnworn, mood, count, contrasting });
+    const safeStylePrefs = Array.isArray(stylePrefs) ? stylePrefs.filter((s: unknown): s is string => typeof s === 'string').slice(0, 6) : undefined;
+    const prompt = buildPrompt(items, { occasion, season, mustIncludeItemId, preferUnworn, mood, count, contrasting, stylePrefs: safeStylePrefs });
 
     let content: string | null = null;
 

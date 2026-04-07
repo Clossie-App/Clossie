@@ -94,8 +94,10 @@ export default function OnboardingPage() {
   );
 
   const saveStylePrefs = () => {
-    if (selectedStyles.size > 0) {
-      try { localStorage.setItem('clossie-styles', JSON.stringify([...selectedStyles])); } catch {}
+    const validIds = new Set(STYLE_OPTIONS.map(s => s.id));
+    const filtered = [...selectedStyles].filter(id => validIds.has(id));
+    if (filtered.length > 0) {
+      try { localStorage.setItem('clossie-styles', JSON.stringify(filtered)); } catch {}
     }
   };
 
