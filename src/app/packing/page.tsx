@@ -26,12 +26,13 @@ interface PackingListItem {
   packed: boolean;
 }
 
+const supabase = createClient(); // Module-scope singleton — no re-render loop
+
 export default function PackingPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const { items: closetItems } = useClothingItems();
   const { showToast } = useToast();
-  const supabase = createClient();
 
   const [lists, setLists] = useState<PackingList[]>([]);
   const [listItems, setListItems] = useState<PackingListItem[]>([]);
@@ -53,9 +54,10 @@ export default function PackingPage() {
     const { data, error } = await supabase
       .from('packing_lists')
       .select('*')
+      .eq('user_id', user.id)
       .order('created_at', { ascending: false });
     if (!error && data) setLists(data);
-  }, [user, supabase]);
+  }, [user]);
 
   useEffect(() => { fetchLists(); }, [fetchLists]);
 
@@ -67,7 +69,7 @@ export default function PackingPage() {
       .select('*')
       .eq('packing_list_id', selectedList);
     if (!error && data) setListItems(data);
-  }, [selectedList, supabase]);
+  }, [selectedList]);
 
   useEffect(() => { fetchListItems(); }, [fetchListItems]);
 
@@ -100,9 +102,8 @@ export default function PackingPage() {
       .from('packing_list_items')
       .update({ packed: !item.packed })
       .eq('id', item.id);
-    if (!error) {
-      setListItems(prev => prev.map(i => i.id === item.id ? { ...i, packed: !i.packed } : i));
-    }
+    if (error) { showToast('Could not update. Try again.', 'error'); return; }
+    setListItems(prev => prev.map(i => i.id === item.id ? { ...i, packed: !i.packed } : i));
   };
 
   const addItemToList = async (listId: string, clothingItemId: string) => {
@@ -112,9 +113,8 @@ export default function PackingPage() {
       .insert({ packing_list_id: listId, clothing_item_id: clothingItemId, packed: false })
       .select()
       .single();
-    if (!error && data) {
-      setListItems(prev => [...prev, data]);
-    }
+    if (error) { showToast('Could not add item.', 'error'); return; }
+    if (data) setListItems(prev => [...prev, data]);
   };
 
   const removeItemFromList = async (clothingItemId: string) => {
@@ -124,22 +124,22 @@ export default function PackingPage() {
       .from('packing_list_items')
       .delete()
       .eq('id', item.id);
-    if (!error) {
-      setListItems(prev => prev.filter(i => i.id !== item.id));
-    }
+    if (error) { showToast('Could not remove item.', 'error'); return; }
+    setListItems(prev => prev.filter(i => i.id !== item.id));
   };
 
   const deleteList = async (listId: string) => {
+    if (!user) return;
     const { error } = await supabase
       .from('packing_lists')
       .delete()
-      .eq('id', listId);
-    if (!error) {
-      setLists(prev => prev.filter(l => l.id !== listId));
-      setSelectedList(null);
-      setListItems([]);
-      showToast('Trip deleted', 'info');
-    }
+      .eq('id', listId)
+      .eq('user_id', user.id);
+    if (error) { showToast('Could not delete trip.', 'error'); return; }
+    setLists(prev => prev.filter(l => l.id !== listId));
+    setSelectedList(null);
+    setListItems([]);
+    showToast('Trip deleted', 'info');
   };
 
   const active = selectedList ? lists.find(l => l.id === selectedList) : null;
@@ -241,7 +241,7 @@ export default function PackingPage() {
                       </p>
                       {item.color && <p className="text-xs text-gray-400 dark:text-gray-500">{item.color}</p>}
                     </div>
-                    <button onClick={() => removeItemFromList(pi.clothing_item_id)} className="text-gray-300 p-1">
+                    <button onClick={() => removeItemFromList(pi.clothing_item_id)} className="text-gray-300 p-1" aria-label="Remove item">
                       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
                       </svg>

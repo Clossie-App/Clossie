@@ -90,15 +90,16 @@ function DailyContent() {
   // Fetch weather + style preferences on mount
   useEffect(() => {
     getWeather().then(w => { if (w) setWeatherData(w); });
+    const styles = new Set<string>();
     try {
       const saved = JSON.parse(localStorage.getItem('clossie-styles') || '[]');
-      if (Array.isArray(saved)) setStylePrefs(saved);
+      if (Array.isArray(saved)) saved.forEach((s: string) => styles.add(s));
     } catch {}
-    // Also read the suggestion style from settings if set
     const settingsStyle = localStorage.getItem('clossie-style');
     if (settingsStyle && settingsStyle !== 'Classic') {
-      setStylePrefs(prev => [...prev, settingsStyle.toLowerCase()]);
+      styles.add(settingsStyle.toLowerCase());
     }
+    setStylePrefs([...styles]);
   }, []);
 
   // Rotate loading messages

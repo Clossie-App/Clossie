@@ -40,8 +40,11 @@ export async function POST(request: NextRequest) {
     if (!imageBase64 || typeof imageBase64 !== 'string') return NextResponse.json({ items: [] }, { status: 400 });
     if (imageBase64.length > 20 * 1024 * 1024) return NextResponse.json({ error: 'Image too large' }, { status: 413 });
 
-    // Try Gemini 2.5 Flash first (better detection), fall back to 2.0
-    let items = await detectWithGemini25(geminiKey, imageBase64, mimeType || 'image/jpeg');
+    // Try Gemini 2.5 Pro first (best detection), then 2.5 Flash, then 2.0 Flash
+    let items = await detectWithGemini(geminiKey, imageBase64, mimeType || 'image/jpeg', 'gemini-2.5-pro');
+    if (items === null) {
+      items = await detectWithGemini(geminiKey, imageBase64, mimeType || 'image/jpeg', 'gemini-2.5-flash');
+    }
     if (items === null) {
       items = await detectWithGemini20(geminiKey, imageBase64, mimeType || 'image/jpeg');
     }
@@ -83,17 +86,18 @@ function validateAndNormalize(rawItems: RawItem[]): Array<{ id: string; label: s
     });
 }
 
-async function detectWithGemini25(
+async function detectWithGemini(
   apiKey: string,
   imageBase64: string,
-  mimeType: string
+  mimeType: string,
+  model: string = 'gemini-2.5-pro'
 ): Promise<Array<{ id: string; label: string; category: string; box: number[]; selected: boolean }> | null> {
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 45000);
+    const timeout = setTimeout(() => controller.abort(), 60000);
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         signal: controller.signal,

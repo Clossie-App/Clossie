@@ -50,6 +50,7 @@ export async function getWeather(): Promise<WeatherData | null> {
 
     if (!res.ok) return null;
     const data = await res.json();
+    if (!data?.current || data.current.temperature_2m == null) return null;
 
     const temp = Math.round(data.current.temperature_2m);
     const code = data.current.weather_code;

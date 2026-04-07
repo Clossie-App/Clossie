@@ -307,8 +307,9 @@ function AddItemContent() {
         });
         if (dbError) throw dbError;
         savedCount++;
-      } catch {
-        // Continue saving remaining cards
+      } catch (err) {
+        console.error(`Failed to save item "${card.tags.category}":`, err);
+        showToast(`Failed to save ${card.tags.subcategory || card.tags.category}`, 'error');
       }
     }
 
