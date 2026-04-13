@@ -79,6 +79,9 @@ function AddItemContent() {
   const [extractingProgress, setExtractingProgress] = useState({ current: 0, total: 0 });
   const [saving, setSaving] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
+  const [tryOnImage, setTryOnImage] = useState<string | null>(null);
+  const [tryOnLoading, setTryOnLoading] = useState(false);
+  const [tryOnAvailable, setTryOnAvailable] = useState<boolean | null>(null); // null = unknown
 
   useEffect(() => {
     if (!authLoading && !user) router.replace('/login');
@@ -95,7 +98,12 @@ function AddItemContent() {
   // ─── File validation ──────────────────────────────────────────────────────
 
   const validateFile = (file: File): string | null => {
-    if (!file.type.startsWith('image/')) return "That file isn't an image. Please choose a photo.";
+    const name = file.name.toLowerCase();
+    const isImage = file.type.startsWith('image/') ||
+      name.endsWith('.heic') || name.endsWith('.heif') ||
+      name.endsWith('.jpg') || name.endsWith('.jpeg') ||
+      name.endsWith('.png') || name.endsWith('.webp');
+    if (!isImage) return "That file isn't an image. Please choose a photo.";
     if (file.size > 15 * 1024 * 1024) return 'That photo is too large (max 15MB). Try a smaller one.';
     return null;
   };
@@ -103,9 +111,10 @@ function AddItemContent() {
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     let file = e.target.files?.[0];
     e.target.value = '';
-    if (!file) return;
+    if (!file) { console.error('[Add] No file selected'); return; }
+    console.log('[Add] File selected:', file.name, file.type, file.size, 'bytes');
     const err = validateFile(file);
-    if (err) { showToast(err, 'error'); return; }
+    if (err) { console.error('[Add] Validation error:', err); showToast(err, 'error'); return; }
 
     // Convert HEIC/HEIF to JPEG (iPhone default format, not supported in most browsers)
     if (file.type === 'image/heic' || file.type === 'image/heif' || file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif')) {
@@ -150,7 +159,7 @@ function AddItemContent() {
       const compressed = await compressImage(file, 1024, 0.85);
       const compressedBase64 = await blobToBase64(compressed);
       const detectCtrl = new AbortController();
-      const detectTimeout = setTimeout(() => detectCtrl.abort(), 30000);
+      const detectTimeout = setTimeout(() => detectCtrl.abort(), 120000); // 2min for local Ollama
       const res = await fetch('/api/ai/detect', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -204,14 +213,14 @@ function AddItemContent() {
         const bgForm = new FormData();
         bgForm.append('image', cropBlob, 'crop.png');
         const bgCtrl = new AbortController();
-        const bgTimeout = setTimeout(() => bgCtrl.abort(), 30000);
+        const bgTimeout = setTimeout(() => bgCtrl.abort(), 60000); // 1min for bg removal
         const bgRes = await fetch('/api/ai/remove-bg', { method: 'POST', body: bgForm, signal: bgCtrl.signal });
         clearTimeout(bgTimeout);
         const cleanBlob = bgRes.ok ? await bgRes.blob() : cropBlob;
 
         const base64 = await blobToBase64(cleanBlob);
         const catCtrl = new AbortController();
-        const catTimeout = setTimeout(() => catCtrl.abort(), 30000);
+        const catTimeout = setTimeout(() => catCtrl.abort(), 120000); // 2min for local Ollama
         const catRes = await fetch('/api/ai/categorize', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -265,6 +274,7 @@ function AddItemContent() {
 
   const handleNextCard = () => {
     setShowDetails(false);
+    setTryOnImage(null);
     setCurrentCardIndex(i => i + 1);
   };
 
@@ -273,53 +283,99 @@ function AddItemContent() {
   const handleSaveAll = async () => {
     if (!user) return;
     setSaving(true);
-    const supabase = createClient();
-    let savedCount = 0;
+    try {
+      const supabase = createClient();
+      let savedCount = 0;
 
-    for (const card of reviewCards) {
-      try {
-        const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.png`;
-        const { error: uploadError } = await supabase.storage
-          .from('clothing-images')
-          .upload(fileName, card.imageBlob, { contentType: 'image/png' });
-        if (uploadError) throw uploadError;
+      for (const card of reviewCards) {
+        try {
+          const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.png`;
+          const { error: uploadError } = await supabase.storage
+            .from('clothing-images')
+            .upload(fileName, card.imageBlob, { contentType: 'image/png' });
+          if (uploadError) throw uploadError;
 
-        const { data: { publicUrl } } = supabase.storage.from('clothing-images').getPublicUrl(fileName);
+          const { data: { publicUrl } } = supabase.storage.from('clothing-images').getPublicUrl(fileName);
+          if (!publicUrl) throw new Error('No public URL returned from storage');
 
-        const { error: dbError } = await supabase.from('clothing_items').insert({
-          user_id: user.id,
-          image_url: publicUrl,
-          thumbnail_url: publicUrl,
-          category: card.tags.category,
-          subcategory: card.tags.subcategory,
-          color: card.tags.color,
-          secondary_color: card.tags.secondary_color,
-          season: card.tags.season,
-          occasion: card.tags.occasion,
-          brand: card.brand || null,
-          size: card.size || null,
-          price: card.price ? parseFloat(card.price) : null,
-          notes: card.notes || null,
-          is_favorite: false,
-          in_laundry: false,
-          is_wishlist: card.isWishlist,
-          wear_count: 0,
-        });
-        if (dbError) throw dbError;
-        savedCount++;
-      } catch (err) {
-        console.error(`Failed to save item "${card.tags.category}":`, err);
-        showToast(`Failed to save ${card.tags.subcategory || card.tags.category}`, 'error');
+          const { error: dbError } = await supabase.from('clothing_items').insert({
+            user_id: user.id,
+            image_url: publicUrl,
+            thumbnail_url: publicUrl,
+            category: card.tags.category,
+            subcategory: card.tags.subcategory,
+            color: card.tags.color,
+            secondary_color: card.tags.secondary_color,
+            season: card.tags.season,
+            occasion: card.tags.occasion,
+            brand: card.brand || null,
+            size: card.size || null,
+            price: card.price ? parseFloat(card.price) : null,
+            notes: card.notes || null,
+            is_favorite: false,
+            in_laundry: false,
+            is_wishlist: card.isWishlist,
+            wear_count: 0,
+          }).select().single();
+          if (dbError) throw dbError;
+          savedCount++;
+        } catch (err) {
+          console.error(`Failed to save item "${card.tags.category}":`, err);
+          showToast(`Failed to save ${card.tags.subcategory || card.tags.category}`, 'error');
+        }
       }
-    }
 
-    showToast(
-      savedCount === reviewCards.length
-        ? `${savedCount} item${savedCount > 1 ? 's' : ''} added to your closet!`
-        : `${savedCount} of ${reviewCards.length} items saved`,
-      'success'
-    );
-    router.push('/closet');
+      if (savedCount === 0) {
+        showToast('Could not save any items. Please try again.', 'error');
+        return;
+      }
+
+      haptics.success();
+      showToast(
+        savedCount === reviewCards.length
+          ? `${savedCount} item${savedCount > 1 ? 's' : ''} added to your closet!`
+          : `${savedCount} of ${reviewCards.length} items saved`,
+        'success'
+      );
+      router.push('/closet');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // ─── Try-On: generate flatlay view via local MLX SD ────────────────────────
+
+  const handleTryOn = async () => {
+    if (!currentCard) return;
+    setTryOnLoading(true);
+    setTryOnImage(null);
+    try {
+      const base64 = await blobToBase64(currentCard.imageBlob);
+      const res = await fetch('/api/ai/try-on', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          imageBase64: base64,
+          description: currentCard.tags.subcategory || currentCard.tags.category,
+        }),
+      });
+      const data = await res.json();
+      if (data.serverOffline) {
+        setTryOnAvailable(false);
+        showToast('Try-on server not running. Start it with: bash scripts/start-tryon.sh', 'info');
+        return;
+      }
+      if (data.image) {
+        setTryOnImage(`data:image/png;base64,${data.image}`);
+        setTryOnAvailable(true);
+      } else {
+        showToast('Could not generate try-on view', 'error');
+      }
+    } catch {
+      showToast('Try-on generation failed', 'error');
+    } finally {
+      setTryOnLoading(false);
+    }
   };
 
   // ─── Render ───────────────────────────────────────────────────────────────
@@ -382,7 +438,7 @@ function AddItemContent() {
               Upload
             </button>
           </div>
-          <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
+          <input ref={fileInputRef} type="file" accept="image/*,.heic,.heif" onChange={handleFileSelect} className="hidden" />
         </div>
       )}
 
@@ -400,8 +456,8 @@ function AddItemContent() {
         <div className="px-4 py-4 space-y-4">
           <p className="text-sm text-gray-500 text-center">
             {detectedItems.length === 0
-              ? 'Nothing detected — draw around the items you want to add'
-              : `${selectedCount} of ${detectedItems.length} item${detectedItems.length !== 1 ? 's' : ''} selected — tap to toggle`}
+              ? '✏️ No items detected — trace around each item below to add it'
+              : `${selectedCount} of ${detectedItems.length} item${detectedItems.length !== 1 ? 's' : ''} selected — tap to toggle, or trace to add more`}
           </p>
           <SelectionCanvas
             imageEl={originalImageEl}
@@ -468,14 +524,52 @@ function AddItemContent() {
 
             {/* Current card */}
             <div className="relative bg-white rounded-3xl shadow-md border border-gray-100 overflow-hidden" style={{ zIndex: 20 }}>
-              {/* Image */}
-              <div className="bg-gray-50 flex items-center justify-center" style={{ height: 260 }}>
-                <img
-                  src={currentCard.imageUrl}
-                  alt="Clothing item"
-                  className="object-contain"
-                  style={{ maxHeight: 230, maxWidth: '100%' }}
-                />
+              {/* Image + Try On */}
+              <div className="bg-gray-50 relative" style={{ height: tryOnImage ? 300 : 260 }}>
+                {tryOnImage ? (
+                  /* Side-by-side: original + generated flatlay */
+                  <div className="flex h-full">
+                    <div className="flex-1 flex items-center justify-center border-r border-gray-100">
+                      <div className="text-center">
+                        <img src={currentCard.imageUrl} alt="Original" className="object-contain mx-auto" style={{ maxHeight: 240, maxWidth: '100%' }} />
+                        <p className="text-[10px] text-gray-400 mt-1">Original</p>
+                      </div>
+                    </div>
+                    <div className="flex-1 flex items-center justify-center">
+                      <div className="text-center">
+                        <img src={tryOnImage} alt="Flatlay" className="object-contain mx-auto" style={{ maxHeight: 240, maxWidth: '100%' }} />
+                        <p className="text-[10px] text-gray-400 mt-1">Flatlay</p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center h-full">
+                    <img src={currentCard.imageUrl} alt="Clothing item" className="object-contain" style={{ maxHeight: 230, maxWidth: '100%' }} />
+                  </div>
+                )}
+                {/* Try On button */}
+                {tryOnAvailable !== false && !tryOnImage && (
+                  <button
+                    onClick={handleTryOn}
+                    disabled={tryOnLoading}
+                    className="absolute top-2 right-2 text-xs px-3 py-1.5 rounded-full font-medium bg-black/60 text-white backdrop-blur-sm transition hover:bg-black/80 disabled:opacity-50"
+                  >
+                    {tryOnLoading ? (
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        Generating...
+                      </span>
+                    ) : '✨ Try On'}
+                  </button>
+                )}
+                {tryOnImage && (
+                  <button
+                    onClick={() => setTryOnImage(null)}
+                    className="absolute top-2 right-2 text-xs px-3 py-1.5 rounded-full font-medium bg-white text-gray-800 shadow-sm transition"
+                  >
+                    ✕ Close
+                  </button>
+                )}
               </div>
 
               {/* AI tags summary */}
@@ -678,6 +772,15 @@ function SelectionCanvas({
   const lassoPointsRef = useRef<{ x: number; y: number }[]>([]);
   const isDrawingRef = useRef(false);
 
+  // Auto-enter draw mode when no items detected
+  const autoDrawRef = useRef(false);
+  useEffect(() => {
+    if (detectedItems.length === 0 && !autoDrawRef.current) {
+      autoDrawRef.current = true;
+      setDrawMode(true);
+    }
+  }, [detectedItems.length]);
+
   // Size canvas to image aspect ratio
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -768,6 +871,7 @@ function SelectionCanvas({
 
   const handlePointerDown = (e: React.MouseEvent | React.TouchEvent) => {
     if (!drawModeRef.current) return;
+    if ('touches' in e) e.preventDefault(); // Prevent scroll on iPhone during draw
     const pos = getPos(e);
     lassoPointsRef.current = [pos];
     isDrawingRef.current = true;
@@ -775,6 +879,7 @@ function SelectionCanvas({
 
   const handlePointerMove = (e: React.MouseEvent | React.TouchEvent) => {
     if (!drawModeRef.current || !isDrawingRef.current) return;
+    if ('touches' in e) e.preventDefault(); // Prevent scroll on iPhone during draw
     const pos = getPos(e);
     const pts = lassoPointsRef.current;
     // Only add point if it's far enough from the last one (prevents excessive density)
@@ -835,7 +940,7 @@ function SelectionCanvas({
   };
 
   return (
-    <div className="relative w-full rounded-2xl overflow-hidden bg-black">
+    <div className={`relative w-full rounded-2xl overflow-hidden bg-black transition-all ${drawMode ? 'ring-2 ring-clossie-400 ring-offset-2 ring-offset-gray-50' : ''}`}>
       <canvas
         ref={canvasRef}
         className="w-full block"
@@ -850,16 +955,18 @@ function SelectionCanvas({
       />
       <button
         onClick={() => { setDrawMode(d => !d); lassoPointsRef.current = []; isDrawingRef.current = false; }}
-        className={`absolute bottom-3 right-3 text-xs px-3 py-1.5 rounded-full font-medium transition ${
-          drawMode ? 'bg-white text-gray-800' : 'bg-black/60 text-white backdrop-blur-sm'
+        className={`absolute bottom-4 left-1/2 -translate-x-1/2 text-sm px-5 py-2.5 rounded-full font-semibold transition shadow-lg ${
+          drawMode
+            ? 'bg-white text-gray-800 shadow-white/20'
+            : 'bg-white/90 text-gray-800 shadow-black/20 backdrop-blur-sm'
         }`}
       >
-        {drawMode ? '✕ Cancel' : '+ Trace Item'}
+        {drawMode ? '✕ Done Tracing' : '✏️ Trace Item'}
       </button>
       {drawMode && (
         <div className="absolute top-3 left-0 right-0 flex justify-center pointer-events-none">
-          <span className="bg-black/60 text-white text-xs px-3 py-1.5 rounded-full backdrop-blur-sm">
-            Trace around the item with your finger
+          <span className="bg-black/70 text-white text-sm px-4 py-2 rounded-full backdrop-blur-sm font-medium">
+            Draw around the item with your finger
           </span>
         </div>
       )}
