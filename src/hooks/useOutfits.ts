@@ -68,7 +68,7 @@ export function useOutfits() {
     fetchOutfits();
   }, [fetchOutfits]);
 
-  const createOutfit = async (
+  const createOutfit = useCallback(async (
     name: string,
     itemIds: string[],
     occasion?: string,
@@ -104,18 +104,19 @@ export function useOutfits() {
 
     await fetchOutfits();
     return outfit;
-  };
+  }, [user, supabase, fetchOutfits]);
 
-  const deleteOutfit = async (id: string) => {
+  const deleteOutfit = useCallback(async (id: string) => {
     if (!user) return;
-    await supabase.from('outfit_items').delete().eq('outfit_id', id);
+    const { error: itemsError } = await supabase.from('outfit_items').delete().eq('outfit_id', id);
+    if (itemsError) console.error('Failed to delete outfit items:', itemsError);
     const { error } = await supabase.from('outfits').delete().eq('id', id).eq('user_id', user.id);
     if (!error) {
       setOutfits((prev) => prev.filter((o) => o.id !== id));
     }
-  };
+  }, [user, supabase]);
 
-  const logWear = async (outfitId: string): Promise<boolean> => {
+  const logWear = useCallback(async (outfitId: string): Promise<boolean> => {
     if (!user) return false;
     const today = new Date().toISOString().split('T')[0];
 
@@ -131,19 +132,20 @@ export function useOutfits() {
     const outfit = outfits.find((o) => o.id === outfitId);
     if (outfit?.items) {
       for (const item of outfit.items) {
-        await supabase
+        const { error: updateError } = await supabase
           .from('clothing_items')
           .update({
             wear_count: item.wear_count + 1,
             last_worn_at: today,
           })
           .eq('id', item.id);
+        if (updateError) console.error('Failed to update wear count for', item.id, updateError);
       }
     }
 
     await fetchOutfits();
     return true;
-  };
+  }, [user, supabase, outfits, fetchOutfits]);
 
   return { outfits, loading, fetchOutfits, createOutfit, deleteOutfit, logWear };
 }

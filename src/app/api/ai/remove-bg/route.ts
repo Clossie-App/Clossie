@@ -86,7 +86,7 @@ async function tryHuggingFace(imageData: ArrayBuffer, model: string): Promise<Ar
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/octet-stream' },
-        body: imageData as any,
+        body: new Uint8Array(imageData),
         signal: controller.signal,
       }
     );

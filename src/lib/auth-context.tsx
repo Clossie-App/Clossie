@@ -88,10 +88,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const completeOnboarding = async () => {
     const supabase = createClient();
-    await supabase.auth.updateUser({
+    const { error } = await supabase.auth.updateUser({
       data: { onboarded_at: new Date().toISOString() },
     });
-    setOnboarded(true);
+    if (!error) setOnboarded(true);
   };
 
   return (

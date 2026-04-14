@@ -36,7 +36,7 @@ export function useClothingItems(category?: ClothingCategory) {
     fetchItems();
   }, [fetchItems]);
 
-  const addItem = async (item: Omit<ClothingItem, 'id' | 'user_id' | 'wear_count' | 'last_worn_at' | 'created_at'>) => {
+  const addItem = useCallback(async (item: Omit<ClothingItem, 'id' | 'user_id' | 'wear_count' | 'last_worn_at' | 'created_at'>) => {
     if (!user) return null;
 
     const { data, error } = await supabase
@@ -54,9 +54,9 @@ export function useClothingItems(category?: ClothingCategory) {
       return data as ClothingItem;
     }
     return null;
-  };
+  }, [user, supabase]);
 
-  const updateItem = async (id: string, updates: Partial<ClothingItem>) => {
+  const updateItem = useCallback(async (id: string, updates: Partial<ClothingItem>) => {
     if (!user) return null;
     const { data, error } = await supabase
       .from('clothing_items')
@@ -71,16 +71,16 @@ export function useClothingItems(category?: ClothingCategory) {
       return data as ClothingItem;
     }
     return null;
-  };
+  }, [user, supabase]);
 
-  const deleteItem = async (id: string) => {
+  const deleteItem = useCallback(async (id: string) => {
     if (!user) return false;
     const { error } = await supabase.from('clothing_items').delete().eq('id', id).eq('user_id', user.id);
     if (!error) {
       setItems((prev) => prev.filter((item) => item.id !== id));
     }
     return !error;
-  };
+  }, [user, supabase]);
 
   return { items, loading, fetchItems, addItem, updateItem, deleteItem };
 }
