@@ -50,13 +50,77 @@ export async function POST(request: NextRequest) {
     if (!imageBase64 || typeof imageBase64 !== 'string') return NextResponse.json({ items: [] }, { status: 400 });
     if (imageBase64.length > 20 * 1024 * 1024) return NextResponse.json({ error: 'Image too large' }, { status: 413 });
 
-    // Use Ollama (free, local, no rate limits)
-    const items = await detectWithOllama(imageBase64);
+    // Try YOLO first (fast, accurate bounding boxes), fall back to Ollama
+    let items = await detectWithYolo(imageBase64);
+    if (items.length === 0) {
+      console.log('[Detect] YOLO returned no items, trying Ollama fallback');
+      items = await detectWithOllama(imageBase64);
+    }
 
     return NextResponse.json({ items });
   } catch (error) {
     console.error('Detection error:', error);
     return NextResponse.json({ items: [], error: 'Detection failed' }, { status: 500 });
+  }
+}
+
+/**
+ * Detect clothing items using the local YOLO server (scripts/yolo-server.py).
+ * Fashion-trained YOLOv8 model gives pixel-accurate bounding boxes in ~3 seconds.
+ * Returns empty array if server is down so the caller can fall back to Ollama.
+ */
+interface YoloItem {
+  label: string;
+  category: string;
+  box_2d: [number, number, number, number];
+  confidence: number;
+}
+
+async function detectWithYolo(
+  imageBase64: string
+): Promise<Array<{ id: string; label: string; category: string; box: number[]; selected: boolean }>> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000); // 30s — YOLO is fast
+
+    const response = await fetch('http://localhost:5002/detect', {
+      method: 'POST',
+      signal: controller.signal,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: imageBase64, conf: 0.3 }),
+    });
+    clearTimeout(timeout);
+
+    if (!response.ok) {
+      console.log('[Detect] YOLO server returned', response.status);
+      return [];
+    }
+
+    const data = await response.json();
+    const yoloItems: YoloItem[] = Array.isArray(data.items) ? data.items : [];
+    console.log(`[Detect] YOLO found ${yoloItems.length} items in ${data.time_seconds}s`);
+
+    // YOLO already returns 0-1000 scale boxes. Just normalize to our interface.
+    return yoloItems
+      .filter((item) => {
+        const [y1, x1, y2, x2] = item.box_2d;
+        return (x2 - x1) > 20 && (y2 - y1) > 20; // skip tiny boxes
+      })
+      .map((item, index) => ({
+        id: `yolo-${index}`,
+        label: String(item.label || 'Clothing item').slice(0, 100),
+        category: VALID_CATEGORIES.includes(item.category) ? item.category : 'other',
+        box: item.box_2d,
+        selected: true,
+      }));
+  } catch (err) {
+    // Silent fallback — YOLO server not running is fine, Ollama takes over
+    if ((err as Error).name === 'AbortError') {
+      console.log('[Detect] YOLO server timed out');
+    } else {
+      console.log('[Detect] YOLO server unavailable:', (err as Error).message);
+    }
+    return [];
   }
 }
 

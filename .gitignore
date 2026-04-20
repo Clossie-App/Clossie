@@ -11,3 +11,7 @@ LEDGER.md
 
 # MLX stable diffusion clone (from scripts/setup-tryon.sh)
 scripts/.mlx-sd/
+
+# Python venvs for local AI servers (created by setup-*.sh scripts)
+scripts/.yolo-venv/
+scripts/.tryon-venv/
